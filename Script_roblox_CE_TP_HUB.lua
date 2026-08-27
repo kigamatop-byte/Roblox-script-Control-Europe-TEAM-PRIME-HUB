@@ -1,4 +1,3 @@
-```lua
 --==============================================================
 -- TEAM PRIME HUB
 -- V26 FINAL FIX + MOBILE RESPONSIVE
