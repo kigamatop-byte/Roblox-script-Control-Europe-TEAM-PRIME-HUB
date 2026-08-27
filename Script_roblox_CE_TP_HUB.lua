@@ -1,6 +1,7 @@
+```lua
 --==============================================================
 -- TEAM PRIME HUB
--- V26 FINAL FIX
+-- V26 FINAL FIX + MOBILE RESPONSIVE
 -- ONE LOCAL SCRIPT
 -- ROBLOX STUDIO TEST BUILD
 --==============================================================
@@ -23,7 +24,37 @@ if not LocalPlayer then
 end
 
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local Camera = workspace.CurrentCamera
 local IsStudio = RunService:IsStudio()
+
+--==============================================================
+-- DEVICE DETECTION
+--==============================================================
+
+local function IsPhone()
+	if not UserInputService.TouchEnabled then
+		return false
+	end
+
+	if UserInputService.KeyboardEnabled then
+		return false
+	end
+
+	local currentCamera = workspace.CurrentCamera
+
+	if currentCamera then
+		local viewport = currentCamera.ViewportSize
+
+		-- Телефон / маленький мобильный экран
+		if viewport.X <= 700 then
+			return true
+		end
+	end
+
+	return true
+end
+
+local MobileDevice = IsPhone()
 
 --==============================================================
 -- CONFIG
@@ -73,6 +104,22 @@ local Config = {
 	ColorSaturation = 0,
 	ColorContrast = 0,
 	ColorBrightness = 0,
+
+	--==========================================================
+	-- MOBILE DEFAULTS
+	--==========================================================
+
+	MobileWidth = 380,
+	MobileHeight = 520,
+
+	MobileMinWidth = 320,
+	MobileMaxWidth = 520,
+
+	MobileMinHeight = 430,
+	MobileMaxHeight = 720,
+
+	MobileSidebarWidth = 105,
+	MobileScale = 0.88,
 }
 
 --==============================================================
@@ -393,11 +440,41 @@ local State: {[string]: any} = {
 
 local Router: {[string]: any} = {}
 
-State.NormalSize =
-	UDim2.fromOffset(
+--==============================================================
+-- RESPONSIVE SIZE
+--==============================================================
+
+local function GetDefaultWindowSize()
+	if MobileDevice then
+		return UDim2.fromOffset(
+			Config.MobileWidth,
+			Config.MobileHeight
+		)
+	end
+
+	return UDim2.fromOffset(
 		Config.Width,
 		Config.Height
 	)
+end
+
+local function GetDefaultSidebarWidth()
+	if MobileDevice then
+		return Config.MobileSidebarWidth
+	end
+
+	return Config.SidebarWidth
+end
+
+local function GetDefaultScale()
+	if MobileDevice then
+		return Config.MobileScale
+	end
+
+	return Config.Scale
+end
+
+State.NormalSize = GetDefaultWindowSize()
 
 --==============================================================
 -- RUNTIME
@@ -679,6 +756,12 @@ local function AddHover(
 	hoverColor
 )
 
+	-- На мобильном устройстве hover не нужен:
+	-- там нет нормального MouseEnter/MouseLeave интерфейса.
+	if MobileDevice then
+		return
+	end
+
 	if not Config.Hover then
 		return
 	end
@@ -777,6 +860,15 @@ local function Notify(
 					),
 
 				Position =
+					MobileDevice
+					and
+					UDim2.new(
+						1,
+						-8,
+						0,
+						8
+					)
+					or
 					UDim2.new(
 						1,
 						-15,
@@ -785,6 +877,13 @@ local function Notify(
 					),
 
 				Size =
+					MobileDevice
+					and
+					UDim2.fromOffset(
+						240,
+						260
+					)
+					or
 					UDim2.fromOffset(
 						330,
 						300
@@ -822,13 +921,27 @@ local function Notify(
 			holder
 		)
 
+	local boxWidth =
+		MobileDevice
+		and
+		225
+		or
+		310
+
+	local boxHeight =
+		MobileDevice
+		and
+		58
+		or
+		64
+
 	Apply(
 		box,
 		{
 			Size =
 				UDim2.fromOffset(
-					310,
-					64
+					boxWidth,
+					boxHeight
 				),
 
 			BackgroundColor3 =
@@ -866,7 +979,7 @@ local function Notify(
 			Size =
 				UDim2.fromOffset(
 					4,
-					64
+					boxHeight
 				),
 
 			BackgroundColor3 =
@@ -884,7 +997,7 @@ local function Notify(
 
 			UDim2.fromOffset(
 				15,
-				7
+				6
 			),
 
 			UDim2.new(
@@ -894,7 +1007,7 @@ local function Notify(
 				20
 			),
 
-			10,
+			MobileDevice and 9 or 10,
 
 			Enum.Font.GothamBold,
 
@@ -912,7 +1025,7 @@ local function Notify(
 
 			UDim2.fromOffset(
 				15,
-				29
+				28
 			),
 
 			UDim2.new(
@@ -922,7 +1035,7 @@ local function Notify(
 				25
 			),
 
-			9,
+			MobileDevice and 8 or 9,
 
 			Enum.Font.Gotham,
 
@@ -951,8 +1064,8 @@ local function Notify(
 							1,
 						Size =
 							UDim2.fromOffset(
-								290,
-								58
+								boxWidth - 20,
+								boxHeight - 6
 							),
 					},
 					0.18,
@@ -1159,20 +1272,11 @@ local function GetRegionScore(region)
 	local score = 0
 
 	if data.Capture ~= nil then
-
-		score =
-			score
-			+
-			data.Capture
-			*
-			0.45
+		score += data.Capture * 0.45
 	end
 
 	if data.Defence ~= nil then
-
-		score =
-			score
-			+
+		score +=
 			(
 				100
 				-
@@ -1258,7 +1362,6 @@ local function GetCountries()
 			country.RegionCount += 1
 
 			if data.Capture ~= nil then
-
 				country.CaptureTotal +=
 					data.Capture
 
@@ -1266,7 +1369,6 @@ local function GetCountries()
 			end
 
 			if data.Defence ~= nil then
-
 				country.DefenceTotal +=
 					data.Defence
 
@@ -1337,7 +1439,6 @@ local function GetCountry(name)
 		if country.Name ==
 			name
 		then
-
 			return country
 		end
 	end
@@ -1451,7 +1552,6 @@ local function ClearESP()
 			if object
 				and object.Parent
 			then
-
 				object:Destroy()
 			end
 		end
@@ -1590,7 +1690,6 @@ local function ClearCubes()
 		if item.Part
 			and item.Part.Parent
 		then
-
 			item.Part:Destroy()
 		end
 	end
@@ -1976,7 +2075,6 @@ local function StartFly()
 		or
 		not root
 	then
-
 		return false
 	end
 
@@ -2107,7 +2205,6 @@ local function StartFly()
 				if UserInputService:IsKeyDown(
 					Enum.KeyCode.W
 				) then
-
 					direction +=
 						camera.CFrame.LookVector
 				end
@@ -2115,7 +2212,6 @@ local function StartFly()
 				if UserInputService:IsKeyDown(
 					Enum.KeyCode.S
 				) then
-
 					direction -=
 						camera.CFrame.LookVector
 				end
@@ -2123,7 +2219,6 @@ local function StartFly()
 				if UserInputService:IsKeyDown(
 					Enum.KeyCode.A
 				) then
-
 					direction -=
 						camera.CFrame.RightVector
 				end
@@ -2131,7 +2226,6 @@ local function StartFly()
 				if UserInputService:IsKeyDown(
 					Enum.KeyCode.D
 				) then
-
 					direction +=
 						camera.CFrame.RightVector
 				end
@@ -2139,7 +2233,6 @@ local function StartFly()
 				if UserInputService:IsKeyDown(
 					Enum.KeyCode.Space
 				) then
-
 					direction +=
 						Vector3.yAxis
 				end
@@ -2147,7 +2240,6 @@ local function StartFly()
 				if UserInputService:IsKeyDown(
 					Enum.KeyCode.LeftControl
 				) then
-
 					direction -=
 						Vector3.yAxis
 				end
@@ -2207,7 +2299,6 @@ local function ClearPage()
 		if child:IsA(
 			"GuiObject"
 		) then
-
 			child:Destroy()
 		end
 	end
@@ -2995,6 +3086,9 @@ local function Slider(
 
 				if input.UserInputType ==
 					Enum.UserInputType.MouseButton1
+					or
+					input.UserInputType ==
+					Enum.UserInputType.Touch
 				then
 
 					dragging =
@@ -3018,8 +3112,10 @@ local function Slider(
 
 				if input.UserInputType ~=
 					Enum.UserInputType.MouseMovement
+					and
+					input.UserInputType ~=
+					Enum.UserInputType.Touch
 				then
-
 					return
 				end
 
@@ -3036,6 +3132,9 @@ local function Slider(
 
 				if input.UserInputType ==
 					Enum.UserInputType.MouseButton1
+					or
+					input.UserInputType ==
+					Enum.UserInputType.Touch
 				then
 
 					dragging =
@@ -3262,7 +3361,6 @@ Pages.Regions = function()
 			if child:IsA(
 				"GuiObject"
 			) then
-
 				child:Destroy()
 			end
 		end
@@ -3675,7 +3773,6 @@ Pages.RegionMonitor = function()
 		if child:IsA(
 			"TextLabel"
 		) then
-
 			table.insert(
 				labels,
 				child
@@ -3883,7 +3980,6 @@ Pages.Countries = function()
 			if child:IsA(
 				"GuiObject"
 			) then
-
 				child:Destroy()
 			end
 		end
@@ -4313,7 +4409,7 @@ Pages.Players = function()
 end
 
 --==============================================================
--- VISUAL PAGES
+-- VISUAL
 --==============================================================
 
 Pages.ESP = function()
@@ -4523,7 +4619,6 @@ Pages.World = function()
 		0.25,
 
 		function(value)
-
 			Lighting.ClockTime =
 				value
 		end
@@ -4537,7 +4632,6 @@ Pages.World = function()
 		0.05,
 
 		function(value)
-
 			Lighting.Brightness =
 				value
 		end
@@ -4551,7 +4645,6 @@ Pages.World = function()
 		0.05,
 
 		function(value)
-
 			Lighting.ExposureCompensation =
 				value
 		end
@@ -4565,7 +4658,6 @@ Pages.World = function()
 		500,
 
 		function(value)
-
 			Lighting.FogEnd =
 				value
 		end
@@ -4576,7 +4668,6 @@ Pages.World = function()
 		Lighting.GlobalShadows,
 
 		function(value)
-
 			Lighting.GlobalShadows =
 				value
 		end
@@ -5106,7 +5197,6 @@ Pages.Music = function()
 		"",
 
 		function()
-
 			StopMusic()
 		end,
 
@@ -5126,7 +5216,6 @@ Pages.Music = function()
 				value
 
 			if MusicSound then
-
 				MusicSound.Volume =
 					value
 			end
@@ -5153,7 +5242,6 @@ Pages.Music = function()
 				value
 
 			if MusicSound then
-
 				MusicSound.Looped =
 					value
 			end
@@ -5631,24 +5719,25 @@ Pages.Design = function()
 
 	Slider(
 		T("width"),
-		Config.MinWidth,
-		Config.MaxWidth,
-		Config.Width,
+		MobileDevice and Config.MobileMinWidth or Config.MinWidth,
+		MobileDevice and Config.MobileMaxWidth or Config.MaxWidth,
+		MobileDevice and Config.MobileWidth or Config.Width,
 		10,
 
 		function(value)
 
-			Config.Width =
-				value
+			if MobileDevice then
+				Config.MobileWidth =
+					value
+			else
+				Config.Width =
+					value
+			end
 
 			State.NormalSize =
-				UDim2.fromOffset(
-					Config.Width,
-					Config.Height
-				)
+				GetDefaultWindowSize()
 
 			if not State.Minimized then
-
 				UI.Main.Size =
 					State.NormalSize
 			end
@@ -5657,24 +5746,25 @@ Pages.Design = function()
 
 	Slider(
 		T("height"),
-		Config.MinHeight,
-		Config.MaxHeight,
-		Config.Height,
+		MobileDevice and Config.MobileMinHeight or Config.MinHeight,
+		MobileDevice and Config.MobileMaxHeight or Config.MaxHeight,
+		MobileDevice and Config.MobileHeight or Config.Height,
 		10,
 
 		function(value)
 
-			Config.Height =
-				value
+			if MobileDevice then
+				Config.MobileHeight =
+					value
+			else
+				Config.Height =
+					value
+			end
 
 			State.NormalSize =
-				UDim2.fromOffset(
-					Config.Width,
-					Config.Height
-				)
+				GetDefaultWindowSize()
 
 			if not State.Minimized then
-
 				UI.Main.Size =
 					State.NormalSize
 			end
@@ -5683,15 +5773,24 @@ Pages.Design = function()
 
 	Slider(
 		T("scale"),
-		0.75,
+		0.60,
 		1.25,
-		Config.Scale,
+		MobileDevice
+			and
+			Config.MobileScale
+			or
+			Config.Scale,
 		0.01,
 
 		function(value)
 
-			Config.Scale =
-				value
+			if MobileDevice then
+				Config.MobileScale =
+					value
+			else
+				Config.Scale =
+					value
+			end
 
 			UI.Scale.Scale =
 				value
@@ -5770,34 +5869,50 @@ Pages.Design = function()
 
 	Slider(
 		T("sidebar"),
-		150,
-		275,
-		Config.SidebarWidth,
+		MobileDevice and 85 or 150,
+		MobileDevice and 140 or 275,
+		MobileDevice
+			and
+			Config.MobileSidebarWidth
+			or
+			Config.SidebarWidth,
 		5,
 
 		function(value)
 
-			Config.SidebarWidth =
-				value
+			if MobileDevice then
+				Config.MobileSidebarWidth =
+					value
+			else
+				Config.SidebarWidth =
+					value
+			end
+
+			local sidebarWidth =
+				MobileDevice
+				and
+				Config.MobileSidebarWidth
+				or
+				Config.SidebarWidth
 
 			UI.Sidebar.Size =
 				UDim2.new(
 					0,
-					value,
+					sidebarWidth,
 					1,
 					-20
 				)
 
 			UI.Content.Position =
 				UDim2.fromOffset(
-					value + 15,
+					sidebarWidth + 15,
 					10
 				)
 
 			UI.Content.Size =
 				UDim2.new(
 					1,
-					-(value + 25),
+					-(sidebarWidth + 25),
 					1,
 					-20
 				)
@@ -5842,36 +5957,41 @@ Pages.Design = function()
 			Config.Hover = true
 			Config.Notifications = true
 
+			Config.MobileWidth = 380
+			Config.MobileHeight = 520
+			Config.MobileSidebarWidth = 105
+			Config.MobileScale = 0.88
+
 			State.NormalSize =
-				UDim2.fromOffset(
-					Config.Width,
-					Config.Height
-				)
+				GetDefaultWindowSize()
 
 			UI.Main.Size =
 				State.NormalSize
 
 			UI.Scale.Scale =
-				Config.Scale
+				GetDefaultScale()
+
+			local sidebarWidth =
+				GetDefaultSidebarWidth()
 
 			UI.Sidebar.Size =
 				UDim2.new(
 					0,
-					Config.SidebarWidth,
+					sidebarWidth,
 					1,
 					-20
 				)
 
 			UI.Content.Position =
 				UDim2.fromOffset(
-					Config.SidebarWidth + 15,
+					sidebarWidth + 15,
 					10
 				)
 
 			UI.Content.Size =
 				UDim2.new(
 					1,
-					-(Config.SidebarWidth + 25),
+					-(sidebarWidth + 25),
 					1,
 					-20
 				)
@@ -5917,7 +6037,6 @@ Pages.Interface = function()
 		Config.Hover,
 
 		function(value)
-
 			Config.Hover =
 				value
 		end
@@ -5928,7 +6047,6 @@ Pages.Interface = function()
 		Config.Notifications,
 
 		function(value)
-
 			Config.Notifications =
 				value
 		end
@@ -6185,25 +6303,21 @@ function ApplyTheme()
 		GetTheme()
 
 	if UI.Main then
-
 		UI.Main.BackgroundColor3 =
 			theme.Background
 	end
 
 	if UI.TopBar then
-
 		UI.TopBar.BackgroundColor3 =
 			theme.Sidebar
 	end
 
 	if UI.Sidebar then
-
 		UI.Sidebar.BackgroundColor3 =
 			theme.Sidebar
 	end
 
 	if UI.Content then
-
 		UI.Content.BackgroundColor3 =
 			theme.Panel
 	end
@@ -6227,19 +6341,16 @@ function ApplyTheme()
 	end
 
 	if UI.PageTitle then
-
 		UI.PageTitle.TextColor3 =
 			theme.Text
 	end
 
 	if UI.PageDescription then
-
 		UI.PageDescription.TextColor3 =
 			theme.Muted
 	end
 
 	if UI.Status then
-
 		UI.Status.TextColor3 =
 			theme.Muted
 	end
@@ -6263,7 +6374,6 @@ function ApplyTheme()
 	end
 
 	if UI.PageContainer then
-
 		UI.PageContainer.ScrollBarImageColor3 =
 			theme.Accent
 	end
@@ -6275,7 +6385,6 @@ function ApplyTheme()
 		) do
 
 			if item.Part then
-
 				item.Part.Color =
 					theme.Accent
 			end
@@ -6355,7 +6464,6 @@ local function RebuildSidebar()
 		if child:IsA(
 			"GuiButton"
 		) then
-
 			child:Destroy()
 		end
 	end
@@ -6414,6 +6522,10 @@ local function RebuildSidebar()
 					Enum.Font.GothamBold,
 
 				TextSize =
+					MobileDevice
+					and
+					8
+					or
 					10,
 
 				TextXAlignment =
@@ -6446,6 +6558,10 @@ local function RebuildSidebar()
 		padding.PaddingLeft =
 			UDim.new(
 				0,
+				MobileDevice
+				and
+				8
+				or
 				12
 			)
 
@@ -6463,7 +6579,10 @@ local function RebuildSidebar()
 			)
 		)
 
-		if Config.Hover then
+		if Config.Hover
+			and
+			not MobileDevice
+		then
 
 			TrackSidebar(
 				button.MouseEnter:Connect(
@@ -6564,6 +6683,10 @@ local function RebuildSidebar()
 					Enum.Font.GothamBold,
 
 				TextSize =
+					MobileDevice
+					and
+					8
+					or
 					10,
 
 				TextXAlignment =
@@ -6596,6 +6719,10 @@ local function RebuildSidebar()
 		padding.PaddingLeft =
 			UDim.new(
 				0,
+				MobileDevice
+				and
+				8
+				or
 				12
 			)
 
@@ -6605,7 +6732,6 @@ local function RebuildSidebar()
 		TrackSidebar(
 			button.Activated:Connect(
 				function()
-
 					Router:Open(
 						"Admin"
 					)
@@ -6657,7 +6783,6 @@ function Router:Open(
 	local success, err =
 		pcall(
 			function()
-
 				page()
 			end
 		)
@@ -6683,20 +6808,17 @@ function Router:Open(
 				if child:IsA(
 					"GuiObject"
 				) then
-
 					child:Destroy()
 				end
 			end
 		end
 
 		if UI.PageTitle then
-
 			UI.PageTitle.Text =
 				T("error")
 		end
 
 		if UI.PageDescription then
-
 			UI.PageDescription.Text =
 				tostring(
 					err
@@ -6829,7 +6951,7 @@ UI.Scale =
 	)
 
 UI.Scale.Scale =
-	Config.Scale
+	GetDefaultScale()
 
 --==============================================================
 -- TOP BAR
@@ -6886,6 +7008,10 @@ UI.TopTitle =
 			25
 		),
 
+		MobileDevice
+		and
+		13
+		or
 		17,
 
 		Enum.Font.GothamBlack,
@@ -6915,6 +7041,10 @@ UI.TopSubtitle =
 			15
 		),
 
+		MobileDevice
+		and
+		7
+		or
 		9,
 
 		Enum.Font.GothamBold,
@@ -7090,6 +7220,9 @@ Apply(
 -- SIDEBAR
 --==============================================================
 
+local InitialSidebarWidth =
+	GetDefaultSidebarWidth()
+
 UI.Sidebar =
 	New(
 		"Frame",
@@ -7108,7 +7241,7 @@ Apply(
 		Size =
 			UDim2.new(
 				0,
-				Config.SidebarWidth,
+				InitialSidebarWidth,
 				1,
 				-20
 			),
@@ -7210,14 +7343,14 @@ Apply(
 	{
 		Position =
 			UDim2.fromOffset(
-				Config.SidebarWidth + 15,
+				InitialSidebarWidth + 15,
 				10
 			),
 
 		Size =
 			UDim2.new(
 				1,
-				-(Config.SidebarWidth + 25),
+				-(InitialSidebarWidth + 25),
 				1,
 				-20
 			),
@@ -7258,6 +7391,10 @@ UI.PageTitle =
 			28
 		),
 
+		MobileDevice
+		and
+		15
+		or
 		20,
 
 		Enum.Font.GothamBlack,
@@ -7284,6 +7421,10 @@ UI.PageDescription =
 			20
 		),
 
+		MobileDevice
+		and
+		7
+		or
 		9,
 
 		Enum.Font.Gotham,
@@ -7375,6 +7516,10 @@ UI.Status =
 			18
 		),
 
+		MobileDevice
+		and
+		7
+		or
 		9,
 
 		Enum.Font.GothamBold,
@@ -7453,6 +7598,9 @@ Track(
 			local valid =
 				input.UserInputType ==
 				Enum.UserInputType.MouseButton1
+				or
+				input.UserInputType ==
+				Enum.UserInputType.Touch
 
 			if not valid then
 				return
@@ -7461,7 +7609,6 @@ Track(
 			if IsControl(
 				input.Position
 			) then
-
 				return
 			end
 
@@ -7485,14 +7632,15 @@ Track(
 				or
 				not State.Dragging
 			then
-
 				return
 			end
 
 			if input.UserInputType ~=
 				Enum.UserInputType.MouseMovement
+				and
+				input.UserInputType ~=
+				Enum.UserInputType.Touch
 			then
-
 				return
 			end
 
@@ -7526,8 +7674,10 @@ Track(
 
 			if input.UserInputType ==
 				Enum.UserInputType.MouseButton1
+				or
+				input.UserInputType ==
+				Enum.UserInputType.Touch
 			then
-
 				State.Dragging =
 					false
 			end
@@ -7562,6 +7712,13 @@ Track(
 					true
 
 				UI.Main.Size =
+					MobileDevice
+					and
+					UDim2.fromOffset(
+						230,
+						50
+					)
+					or
 					UDim2.fromOffset(
 						340,
 						58
@@ -7595,6 +7752,13 @@ Track(
 						UI.Main,
 						{
 							Size =
+								MobileDevice
+								and
+								UDim2.fromOffset(
+									230,
+									50
+								)
+								or
 								UDim2.fromOffset(
 									340,
 									58
@@ -7609,7 +7773,6 @@ Track(
 				end
 
 				if not State.Destroyed then
-
 					UI.Body.Visible =
 						false
 				end
@@ -7673,6 +7836,13 @@ Track(
 
 						{
 							Size =
+								MobileDevice
+								and
+								UDim2.fromOffset(
+									210,
+									40
+								)
+								or
 								UDim2.fromOffset(
 									300,
 									45
@@ -7706,7 +7876,6 @@ Track(
 				and
 				UI.ScreenGui.Parent
 			then
-
 				UI.ScreenGui:Destroy()
 			end
 		end
@@ -7822,10 +7991,8 @@ Track(
 				) do
 
 					if object
-						and
-						object.Parent
+						and object.Parent
 					then
-
 						object:Destroy()
 					end
 				end
@@ -7851,7 +8018,6 @@ Track(
 							and
 							ESPEnabled
 						then
-
 							RefreshESP()
 						end
 					end
@@ -7876,7 +8042,6 @@ Track(
 						and
 						ESPEnabled
 					then
-
 						RefreshESP()
 					end
 				end
@@ -7884,6 +8049,174 @@ Track(
 		end
 	)
 )
+
+--==============================================================
+-- RESPONSIVE UPDATE
+--==============================================================
+
+local function ApplyResponsiveLayout()
+
+	if not UI.Main
+		or
+		not UI.Scale
+	then
+		return
+	end
+
+	local camera =
+		workspace.CurrentCamera
+
+	if not camera then
+		return
+	end
+
+	local viewport =
+		camera.ViewportSize
+
+	--==========================================================
+	-- PHONE
+	--==========================================================
+
+	if MobileDevice then
+
+		local width =
+			Config.MobileWidth
+
+		local height =
+			Config.MobileHeight
+
+		-- Автоматически уменьшаем UI,
+		-- если экран телефона меньше стандартного
+		local availableWidth =
+			math.max(
+				viewport.X - 20,
+				260
+			)
+
+		local availableHeight =
+			math.max(
+				viewport.Y - 40,
+				360
+			)
+
+		local fitX =
+			availableWidth
+			/
+			width
+
+		local fitY =
+			availableHeight
+			/
+			height
+
+		local fit =
+			math.min(
+				fitX,
+				fitY,
+				1
+			)
+
+		local finalScale =
+			math.min(
+				Config.MobileScale,
+				fit
+			)
+
+		UI.Scale.Scale =
+			math.max(
+				finalScale,
+				0.62
+			)
+
+		UI.Main.Size =
+			UDim2.fromOffset(
+				width,
+				height
+			)
+
+		local sidebarWidth =
+			Config.MobileSidebarWidth
+
+		UI.Sidebar.Size =
+			UDim2.new(
+				0,
+				sidebarWidth,
+				1,
+				-20
+			)
+
+		UI.Content.Position =
+			UDim2.fromOffset(
+				sidebarWidth + 15,
+				10
+			)
+
+		UI.Content.Size =
+			UDim2.new(
+				1,
+				-(sidebarWidth + 25),
+				1,
+				-20
+			)
+
+	else
+
+		--========================================================
+		-- PC
+		--========================================================
+
+		UI.Scale.Scale =
+			Config.Scale
+
+		UI.Main.Size =
+			UDim2.fromOffset(
+				Config.Width,
+				Config.Height
+			)
+
+		local sidebarWidth =
+			Config.SidebarWidth
+
+		UI.Sidebar.Size =
+			UDim2.new(
+				0,
+				sidebarWidth,
+				1,
+				-20
+			)
+
+		UI.Content.Position =
+			UDim2.fromOffset(
+				sidebarWidth + 15,
+				10
+			)
+
+		UI.Content.Size =
+			UDim2.new(
+				1,
+				-(sidebarWidth + 25),
+				1,
+				-20
+			)
+	end
+
+	State.NormalSize =
+		UI.Main.Size
+end
+
+if Camera then
+	Track(
+		Camera:GetPropertyChangedSignal(
+			"ViewportSize"
+		):Connect(
+			function()
+				if not State.Destroyed then
+					ApplyResponsiveLayout()
+				end
+			end
+		)
+	)
+end
 
 --==============================================================
 -- SHOW WINDOW
@@ -7904,16 +8237,36 @@ function ShowWindow()
 	UI.Main.Visible =
 		true
 
+	local startWidth =
+		MobileDevice
+		and
+		math.max(
+			220,
+			Config.MobileWidth - 45
+		)
+		or
+		math.max(
+			300,
+			Config.Width - 80
+		)
+
+	local startHeight =
+		MobileDevice
+		and
+		math.max(
+			200,
+			Config.MobileHeight - 45
+		)
+		or
+		math.max(
+			250,
+			Config.Height - 60
+		)
+
 	UI.Main.Size =
 		UDim2.fromOffset(
-			math.max(
-				300,
-				Config.Width - 80
-			),
-			math.max(
-				250,
-				Config.Height - 60
-			)
+			startWidth,
+			startHeight
 		)
 
 	UI.Main.BackgroundTransparency =
@@ -7991,6 +8344,13 @@ local function LanguageSplash()
 				),
 
 			Size =
+				MobileDevice
+				and
+				UDim2.fromOffset(
+					330,
+					300
+				)
+				or
 				UDim2.fromOffset(
 					560,
 					330
@@ -8035,6 +8395,10 @@ local function LanguageSplash()
 			40
 		),
 
+		MobileDevice
+		and
+		21
+		or
 		28,
 
 		Enum.Font.GothamBlack,
@@ -8060,6 +8424,10 @@ local function LanguageSplash()
 			20
 		),
 
+		MobileDevice
+		and
+		8
+		or
 		10,
 
 		Enum.Font.GothamBold,
@@ -8085,6 +8453,10 @@ local function LanguageSplash()
 			26
 		),
 
+		MobileDevice
+		and
+		9
+		or
 		12,
 
 		Enum.Font.GothamBold,
@@ -8104,12 +8476,26 @@ local function LanguageSplash()
 		ru,
 		{
 			Position =
+				MobileDevice
+				and
+				UDim2.fromOffset(
+					25,
+					160
+				)
+				or
 				UDim2.fromOffset(
 					45,
 					175
 				),
 
 			Size =
+				MobileDevice
+				and
+				UDim2.fromOffset(
+					280,
+					55
+				)
+				or
 				UDim2.fromOffset(
 					220,
 					65
@@ -8131,6 +8517,10 @@ local function LanguageSplash()
 				Enum.Font.GothamBold,
 
 			TextSize =
+				MobileDevice
+				and
+				11
+				or
 				13,
 
 			AutoButtonColor =
@@ -8162,12 +8552,26 @@ local function LanguageSplash()
 		en,
 		{
 			Position =
+				MobileDevice
+				and
+				UDim2.fromOffset(
+					25,
+					225
+				)
+				or
 				UDim2.fromOffset(
 					295,
 					175
 				),
 
 			Size =
+				MobileDevice
+				and
+				UDim2.fromOffset(
+					280,
+					55
+				)
+				or
 				UDim2.fromOffset(
 					220,
 					65
@@ -8189,6 +8593,10 @@ local function LanguageSplash()
 				Enum.Font.GothamBold,
 
 			TextSize =
+				MobileDevice
+				and
+				11
+				or
 				13,
 
 			AutoButtonColor =
@@ -8237,12 +8645,9 @@ local function LanguageSplash()
 		if language ==
 			"ru"
 		then
-
 			button.Text =
 				"ЗАПУСК..."
-
 		else
-
 			button.Text =
 				"STARTING..."
 		end
@@ -8251,6 +8656,13 @@ local function LanguageSplash()
 			button,
 			{
 				Size =
+					MobileDevice
+					and
+					UDim2.fromOffset(
+						290,
+						60
+					)
+					or
 					UDim2.fromOffset(
 						230,
 						70
@@ -8268,6 +8680,13 @@ local function LanguageSplash()
 			card,
 			{
 				Size =
+					MobileDevice
+					and
+					UDim2.fromOffset(
+						300,
+						270
+					)
+					or
 					UDim2.fromOffset(
 						500,
 						300
@@ -8298,7 +8717,6 @@ local function LanguageSplash()
 			and
 			splash.Parent
 		then
-
 			splash:Destroy()
 		end
 
@@ -8320,6 +8738,7 @@ local function LanguageSplash()
 			T("ready")
 
 		ApplyTheme()
+		ApplyResponsiveLayout()
 
 		RebuildSidebar()
 
@@ -8333,7 +8752,6 @@ local function LanguageSplash()
 	Track(
 		ru.Activated:Connect(
 			function()
-
 				Choose(
 					"ru",
 					ru
@@ -8345,7 +8763,6 @@ local function LanguageSplash()
 	Track(
 		en.Activated:Connect(
 			function()
-
 				Choose(
 					"en",
 					en
@@ -8354,89 +8771,93 @@ local function LanguageSplash()
 		)
 	)
 
-	Track(
-		ru.MouseEnter:Connect(
-			function()
+	-- Hover только на ПК
+	if not MobileDevice then
 
-				if selected then
-					return
+		Track(
+			ru.MouseEnter:Connect(
+				function()
+
+					if selected then
+						return
+					end
+
+					Animate(
+						ru,
+						{
+							BackgroundColor3 =
+								Themes.Prime.Accent
+						},
+						0.08,
+						Enum.EasingStyle.Quad
+					)
 				end
-
-				Animate(
-					ru,
-					{
-						BackgroundColor3 =
-							Themes.Prime.Accent
-					},
-					0.08,
-					Enum.EasingStyle.Quad
-				)
-			end
+			)
 		)
-	)
 
-	Track(
-		ru.MouseLeave:Connect(
-			function()
+		Track(
+			ru.MouseLeave:Connect(
+				function()
 
-				if selected then
-					return
+					if selected then
+						return
+					end
+
+					Animate(
+						ru,
+						{
+							BackgroundColor3 =
+								Themes.Prime.Card
+						},
+						0.08,
+						Enum.EasingStyle.Quad
+					)
 				end
-
-				Animate(
-					ru,
-					{
-						BackgroundColor3 =
-							Themes.Prime.Card
-					},
-					0.08,
-					Enum.EasingStyle.Quad
-				)
-			end
+			)
 		)
-	)
 
-	Track(
-		en.MouseEnter:Connect(
-			function()
+		Track(
+			en.MouseEnter:Connect(
+				function()
 
-				if selected then
-					return
+					if selected then
+						return
+					end
+
+					Animate(
+						en,
+						{
+							BackgroundColor3 =
+								Themes.Prime.Accent
+						},
+						0.08,
+						Enum.EasingStyle.Quad
+					)
 				end
-
-				Animate(
-					en,
-					{
-						BackgroundColor3 =
-							Themes.Prime.Accent
-					},
-					0.08,
-					Enum.EasingStyle.Quad
-				)
-			end
+			)
 		)
-	)
 
-	Track(
-		en.MouseLeave:Connect(
-			function()
+		Track(
+			en.MouseLeave:Connect(
+				function()
 
-				if selected then
-					return
+					if selected then
+						return
+					end
+
+					Animate(
+						en,
+						{
+							BackgroundColor3 =
+								Themes.Prime.Card
+						},
+						0.08,
+						Enum.EasingStyle.Quad
+					)
 				end
-
-				Animate(
-					en,
-					{
-						BackgroundColor3 =
-							Themes.Prime.Card
-					},
-					0.08,
-					Enum.EasingStyle.Quad
-				)
-			end
+			)
 		)
-	)
+	end
 end
 
 --==============================================================
@@ -8445,7 +8866,11 @@ end
 
 print(
 	"[TEAM PRIME HUB] V26 initialized:",
-	LocalPlayer.Name
+	LocalPlayer.Name,
+	"| Device:",
+	MobileDevice and "PHONE" or "PC"
 )
 
+ApplyResponsiveLayout()
 LanguageSplash()
+```
