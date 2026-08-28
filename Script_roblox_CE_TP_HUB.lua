@@ -8872,4 +8872,3 @@ print(
 
 ApplyResponsiveLayout()
 LanguageSplash()
-```
