@@ -1,9 +1,9 @@
 --==============================================================
 -- TEAM PRIME HUB
--- V26 FINAL FIX + MOBILE RESPONSIVE
--- ONE LOCAL SCRIPT
--- PUBLISHED / STUDIO BUILD
--- FLY: NO STUDIO FILTER
+-- V26 FINAL
+-- PUBLISHED + STUDIO
+-- FLY WITHOUT STUDIO FILTER
+-- SAFE FUNCTION INITIALIZATION
 --==============================================================
 
 --==============================================================
@@ -24,10 +24,9 @@ if not LocalPlayer then
 end
 
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-local Camera = workspace.CurrentCamera
 
 --==============================================================
--- DEVICE DETECTION
+-- DEVICE
 --==============================================================
 
 local function IsPhone()
@@ -39,14 +38,10 @@ local function IsPhone()
 		return false
 	end
 
-	local currentCamera = workspace.CurrentCamera
+	local camera = workspace.CurrentCamera
 
-	if currentCamera then
-		local viewport = currentCamera.ViewportSize
-
-		if viewport.X <= 700 then
-			return true
-		end
+	if camera then
+		return camera.ViewportSize.X <= 700
 	end
 
 	return true
@@ -102,10 +97,6 @@ local Config = {
 	ColorSaturation = 0,
 	ColorContrast = 0,
 	ColorBrightness = 0,
-
-	--==========================================================
-	-- MOBILE DEFAULTS
-	--==========================================================
 
 	MobileWidth = 380,
 	MobileHeight = 520,
@@ -283,6 +274,7 @@ local Lang = {
 		noTrack = "ТРЕК НЕ ВЫБРАН",
 
 		localTest = "Локальное тестирование",
+		studioOnly = "Только Roblox Studio",
 
 		russian = "РУССКИЙ",
 		english = "АНГЛИЙСКИЙ",
@@ -388,6 +380,7 @@ local Lang = {
 		noTrack = "NO TRACK",
 
 		localTest = "Local testing",
+		studioOnly = "Roblox Studio only",
 
 		russian = "RUSSIAN",
 		english = "ENGLISH",
@@ -395,23 +388,18 @@ local Lang = {
 }
 
 local function T(key)
-	local dictionary = Lang[Config.Language]
-
-	if not dictionary then
-		dictionary = Lang.ru
-	end
-
+	local dictionary = Lang[Config.Language] or Lang.ru
 	return dictionary[key] or key
 end
 
 --==============================================================
--- DYNAMIC TABLES
+-- RUNTIME
 --==============================================================
 
-local UI: {[string]: any} = {}
-local Pages: {[string]: any} = {}
+local UI = {}
+local Pages = {}
 
-local State: {[string]: any} = {
+local State = {
 	Started = false,
 	Destroyed = false,
 
@@ -434,10 +422,14 @@ local State: {[string]: any} = {
 	WindowTweening = false,
 }
 
-local Router: {[string]: any} = {}
+local Router = {}
+
+-- FORWARD DECLARATIONS
+local ApplyTheme
+local ShowWindow
 
 --==============================================================
--- RESPONSIVE SIZE
+-- SIZE
 --==============================================================
 
 local function GetDefaultWindowSize()
@@ -473,7 +465,7 @@ end
 State.NormalSize = GetDefaultWindowSize()
 
 --==============================================================
--- RUNTIME
+-- FLY
 --==============================================================
 
 local FlyState = {
@@ -490,6 +482,10 @@ local FlyState = {
 	Orientation = nil,
 }
 
+--==============================================================
+-- OTHER RUNTIME
+--==============================================================
+
 local ESPEnabled = false
 local ESPObjects = {}
 
@@ -503,12 +499,15 @@ local MusicSound = nil
 local RegionMonitorToken = 0
 
 --==============================================================
--- CONNECTION HELPERS
+-- CONNECTIONS
 --==============================================================
 
 local function Track(connection)
 	if connection then
-		table.insert(State.Connections, connection)
+		table.insert(
+			State.Connections,
+			connection
+		)
 	end
 
 	return connection
@@ -516,7 +515,10 @@ end
 
 local function TrackPage(connection)
 	if connection then
-		table.insert(State.PageConnections, connection)
+		table.insert(
+			State.PageConnections,
+			connection
+		)
 	end
 
 	return connection
@@ -524,15 +526,18 @@ end
 
 local function TrackSidebar(connection)
 	if connection then
-		table.insert(State.SidebarConnections, connection)
+		table.insert(
+			State.SidebarConnections,
+			connection
+		)
 	end
 
 	return connection
 end
 
 local function DisconnectList(list)
-	for index = #list, 1, -1 do
-		local connection = list[index]
+	for i = #list, 1, -1 do
+		local connection = list[i]
 
 		if connection then
 			pcall(function()
@@ -540,7 +545,7 @@ local function DisconnectList(list)
 			end)
 		end
 
-		list[index] = nil
+		list[i] = nil
 	end
 end
 
@@ -569,13 +574,23 @@ end
 local function AddCorner(object, radius)
 	local corner = Instance.new("UICorner")
 
-	corner.CornerRadius = UDim.new(0, radius)
+	corner.CornerRadius =
+		UDim.new(
+			0,
+			radius
+		)
+
 	corner.Parent = object
 
 	return corner
 end
 
-local function AddStroke(object, color, transparency, thickness)
+local function AddStroke(
+	object,
+	color,
+	transparency,
+	thickness
+)
 	local stroke = Instance.new("UIStroke")
 
 	stroke.Color = color
@@ -607,8 +622,10 @@ local function AddLabel(
 	label.Font = font
 	label.TextSize = textSize
 	label.TextXAlignment = align
-	label.TextYAlignment = Enum.TextYAlignment.Center
+	label.TextYAlignment =
+		Enum.TextYAlignment.Center
 	label.TextWrapped = true
+
 	label.Parent = parent
 
 	return label
@@ -618,7 +635,12 @@ end
 -- ANIMATION
 --==============================================================
 
-local function Animate(object, properties, duration, style)
+local function Animate(
+	object,
+	properties,
+	duration,
+	style
+)
 	if State.Destroyed then
 		return nil
 	end
@@ -627,22 +649,37 @@ local function Animate(object, properties, duration, style)
 		return nil
 	end
 
-	local tween = TweenService:Create(
-		object,
-		TweenInfo.new(
-			duration or Config.AnimationSpeed,
-			style or Enum.EasingStyle.Quint,
-			Enum.EasingDirection.Out
-		),
-		properties
-	)
+	local tween =
+		TweenService:Create(
+			object,
+
+			TweenInfo.new(
+				duration
+					or Config.AnimationSpeed,
+
+				style
+					or Enum.EasingStyle.Quint,
+
+				Enum.EasingDirection.Out
+			),
+
+			properties
+		)
 
 	tween:Play()
 
 	return tween
 end
 
-local function AddHover(button, normalColor, hoverColor)
+--==============================================================
+-- HOVER
+--==============================================================
+
+local function AddHover(
+	button,
+	normalColor,
+	hoverColor
+)
 	if MobileDevice then
 		return
 	end
@@ -652,46 +689,58 @@ local function AddHover(button, normalColor, hoverColor)
 	end
 
 	TrackPage(
-		button.MouseEnter:Connect(function()
-			if State.Destroyed or not button.Parent then
-				return
-			end
+		button.MouseEnter:Connect(
+			function()
+				if State.Destroyed
+					or not button.Parent
+				then
+					return
+				end
 
-			Animate(
-				button,
-				{
-					BackgroundColor3 = hoverColor
-				},
-				0.08,
-				Enum.EasingStyle.Quad
-			)
-		end)
+				Animate(
+					button,
+					{
+						BackgroundColor3 =
+							hoverColor
+					},
+					0.08,
+					Enum.EasingStyle.Quad
+				)
+			end
+		)
 	)
 
 	TrackPage(
-		button.MouseLeave:Connect(function()
-			if State.Destroyed or not button.Parent then
-				return
-			end
+		button.MouseLeave:Connect(
+			function()
+				if State.Destroyed
+					or not button.Parent
+				then
+					return
+				end
 
-			Animate(
-				button,
-				{
-					BackgroundColor3 = normalColor
-				},
-				0.08,
-				Enum.EasingStyle.Quad
-			)
-		end)
+				Animate(
+					button,
+					{
+						BackgroundColor3 =
+							normalColor
+					},
+					0.08,
+					Enum.EasingStyle.Quad
+				)
+			end
+		)
 	)
 end
 
 --==============================================================
--- NOTIFICATIONS
+-- NOTIFY
 --==============================================================
 
 local function Notify(title, message)
-	if not Config.Notifications or State.Destroyed then
+	if not Config.Notifications
+		or State.Destroyed
+	then
 		return
 	end
 
@@ -699,27 +748,52 @@ local function Notify(title, message)
 		return
 	end
 
-	local holder = UI.ScreenGui:FindFirstChild("Notifications")
+	local holder =
+		UI.ScreenGui:FindFirstChild(
+			"Notifications"
+		)
 
 	if not holder then
-		holder = New("Frame", UI.ScreenGui)
+		holder =
+			New(
+				"Frame",
+				UI.ScreenGui
+			)
 
 		Apply(
 			holder,
 			{
-				Name = "Notifications",
+				Name =
+					"Notifications",
 
-				AnchorPoint = Vector2.new(1, 0),
+				AnchorPoint =
+					Vector2.new(1, 0),
 
 				Position =
 					MobileDevice
-					and UDim2.new(1, -8, 0, 8)
-					or UDim2.new(1, -15, 0, 15),
+					and UDim2.new(
+						1,
+						-8,
+						0,
+						8
+					)
+					or UDim2.new(
+						1,
+						-15,
+						0,
+						15
+					),
 
 				Size =
 					MobileDevice
-					and UDim2.fromOffset(240, 260)
-					or UDim2.fromOffset(330, 300),
+					and UDim2.fromOffset(
+						240,
+						260
+					)
+					or UDim2.fromOffset(
+						330,
+						300
+					),
 
 				BackgroundTransparency = 1,
 
@@ -727,31 +801,47 @@ local function Notify(title, message)
 			}
 		)
 
-		local layout = Instance.new("UIListLayout")
+		local layout =
+			Instance.new(
+				"UIListLayout"
+			)
 
-		layout.Padding = UDim.new(0, 7)
-		layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+		layout.Padding =
+			UDim.new(0, 7)
+
+		layout.HorizontalAlignment =
+			Enum.HorizontalAlignment.Right
+
 		layout.Parent = holder
 	end
 
-	local box = New("Frame", holder)
-
-	local boxWidth =
+	local width =
 		MobileDevice
 		and 225
 		or 310
 
-	local boxHeight =
+	local height =
 		MobileDevice
 		and 58
 		or 64
 
+	local box =
+		New(
+			"Frame",
+			holder
+		)
+
 	Apply(
 		box,
 		{
-			Size = UDim2.fromOffset(boxWidth, boxHeight),
+			Size =
+				UDim2.fromOffset(
+					width,
+					height
+				),
 
-			BackgroundColor3 = GetTheme().Panel,
+			BackgroundColor3 =
+				GetTheme().Panel,
 
 			BorderSizePixel = 0,
 
@@ -760,79 +850,117 @@ local function Notify(title, message)
 	)
 
 	AddCorner(box, 9)
-	AddStroke(box, GetTheme().Accent, 0.7, 1)
 
-	local stripe = New("Frame", box)
+	AddStroke(
+		box,
+		GetTheme().Accent,
+		0.7,
+		1
+	)
+
+	local stripe =
+		New(
+			"Frame",
+			box
+		)
 
 	Apply(
 		stripe,
 		{
-			Size = UDim2.fromOffset(4, boxHeight),
+			Size =
+				UDim2.fromOffset(
+					4,
+					height
+				),
 
-			BackgroundColor3 = GetTheme().Accent,
+			BackgroundColor3 =
+				GetTheme().Accent,
 
 			BorderSizePixel = 0,
 		}
 	)
 
-	local titleLabel = AddLabel(
-		box,
-		title,
+	local titleLabel =
+		AddLabel(
+			box,
+			title,
 
-		UDim2.fromOffset(15, 6),
+			UDim2.fromOffset(
+				15,
+				6
+			),
 
-		UDim2.new(1, -25, 0, 20),
+			UDim2.new(
+				1,
+				-25,
+				0,
+				20
+			),
 
-		MobileDevice and 9 or 10,
+			MobileDevice and 9 or 10,
 
-		Enum.Font.GothamBold,
+			Enum.Font.GothamBold,
 
-		GetTheme().Text,
+			GetTheme().Text,
 
-		Enum.TextXAlignment.Left
-	)
+			Enum.TextXAlignment.Left
+		)
 
 	titleLabel.ZIndex = 903
 
-	local messageLabel = AddLabel(
-		box,
-		message,
+	local messageLabel =
+		AddLabel(
+			box,
+			message,
 
-		UDim2.fromOffset(15, 28),
+			UDim2.fromOffset(
+				15,
+				28
+			),
 
-		UDim2.new(1, -25, 0, 25),
+			UDim2.new(
+				1,
+				-25,
+				0,
+				25
+			),
 
-		MobileDevice and 8 or 9,
+			MobileDevice and 8 or 9,
 
-		Enum.Font.Gotham,
+			Enum.Font.Gotham,
 
-		GetTheme().Muted,
+			GetTheme().Muted,
 
-		Enum.TextXAlignment.Left
-	)
+			Enum.TextXAlignment.Left
+		)
 
 	messageLabel.ZIndex = 903
 
 	task.delay(
 		2.7,
 		function()
-			if not box or not box.Parent then
+			if not box
+				or not box.Parent
+			then
 				return
 			end
 
-			local tween = Animate(
-				box,
-				{
-					BackgroundTransparency = 1,
+			local tween =
+				Animate(
+					box,
+					{
+						BackgroundTransparency =
+							1,
 
-					Size = UDim2.fromOffset(
-						boxWidth - 20,
-						boxHeight - 6
-					),
-				},
-				0.18,
-				Enum.EasingStyle.Quad
-			)
+						Size =
+							UDim2.fromOffset(
+								width - 20,
+								height - 6
+							),
+					},
+					0.18,
+					Enum.EasingStyle.Quad
+				)
 
 			if tween then
 				tween.Completed:Wait()
@@ -850,7 +978,10 @@ end
 --==============================================================
 
 local function GetRegions()
-	local folder = workspace:FindFirstChild("Regions")
+	local folder =
+		workspace:FindFirstChild(
+			"Regions"
+		)
 
 	if not folder then
 		return {}
@@ -858,16 +989,25 @@ local function GetRegions()
 
 	local result = {}
 
-	for _, object in ipairs(folder:GetChildren()) do
-		if object:IsA("Folder") or object:IsA("Model") then
-			table.insert(result, object)
+	for _, object in ipairs(
+		folder:GetChildren()
+	) do
+		if object:IsA("Folder")
+			or object:IsA("Model")
+		then
+			table.insert(
+				result,
+				object
+			)
 		end
 	end
 
 	table.sort(
 		result,
 		function(a, b)
-			return a.Name:lower() < b.Name:lower()
+			return a.Name:lower()
+				<
+				b.Name:lower()
 		end
 	)
 
@@ -875,29 +1015,53 @@ local function GetRegions()
 end
 
 local function GetRegionData(region)
-	if not region or not region.Parent then
+	if not region
+		or not region.Parent
+	then
 		return nil
 	end
 
-	local country = region:FindFirstChild("Country", true)
-	local capture = region:FindFirstChild("CaptureValue", true)
-	local defence = region:FindFirstChild("DefenceHP", true)
+	local country =
+		region:FindFirstChild(
+			"Country",
+			true
+		)
 
-	if country and not country:IsA("StringValue") then
+	local capture =
+		region:FindFirstChild(
+			"CaptureValue",
+			true
+		)
+
+	local defence =
+		region:FindFirstChild(
+			"DefenceHP",
+			true
+		)
+
+	if country
+		and not country:IsA(
+			"StringValue"
+		)
+	then
 		country = nil
 	end
 
-	if capture and not (
-		capture:IsA("NumberValue")
-		or capture:IsA("IntValue")
-	) then
+	if capture
+		and not (
+			capture:IsA("NumberValue")
+			or capture:IsA("IntValue")
+		)
+	then
 		capture = nil
 	end
 
-	if defence and not (
-		defence:IsA("NumberValue")
-		or defence:IsA("IntValue")
-	) then
+	if defence
+		and not (
+			defence:IsA("NumberValue")
+			or defence:IsA("IntValue")
+		)
+	then
 		defence = nil
 	end
 
@@ -908,15 +1072,21 @@ local function GetRegionData(region)
 		AntiAircraft = false,
 	}
 
-	for _, object in ipairs(region:GetDescendants()) do
-		local name = object.Name:lower()
+	for _, object in ipairs(
+		region:GetDescendants()
+	) do
+		local name =
+			object.Name:lower()
 
 		if name == "capital" then
 			features.Capital = true
+
 		elseif name == "airport" then
 			features.Airport = true
+
 		elseif name == "shipyard" then
 			features.Shipyard = true
+
 		elseif name == "antiaircraft" then
 			features.AntiAircraft = true
 		end
@@ -949,7 +1119,8 @@ local function GetRegionData(region)
 end
 
 local function GetRegionScore(region)
-	local data = GetRegionData(region)
+	local data =
+		GetRegionData(region)
 
 	if not data then
 		return 0
@@ -962,7 +1133,9 @@ local function GetRegionScore(region)
 	end
 
 	if data.Defence ~= nil then
-		score += (100 - data.Defence) * 0.35
+		score +=
+			(100 - data.Defence)
+			* 0.35
 	end
 
 	if data.Features.Capital then
@@ -981,22 +1154,31 @@ local function GetRegionScore(region)
 		score += 2
 	end
 
-	return math.clamp(score, 0, 100)
+	return math.clamp(
+		score,
+		0,
+		100
+	)
 end
 
 local function GetCountries()
 	local map = {}
 
-	for _, region in ipairs(GetRegions()) do
-		local data = GetRegionData(region)
+	for _, region in ipairs(
+		GetRegions()
+	) do
+		local data =
+			GetRegionData(region)
 
 		if data and data.Country then
-			local name = tostring(data.Country)
+			local name =
+				tostring(data.Country)
 
 			if not map[name] then
 				map[name] = {
 					Name = name,
 					Regions = {},
+
 					RegionCount = 0,
 
 					CaptureTotal = 0,
@@ -1011,19 +1193,27 @@ local function GetCountries()
 				}
 			end
 
-			local country = map[name]
+			local country =
+				map[name]
 
-			table.insert(country.Regions, region)
+			table.insert(
+				country.Regions,
+				region
+			)
 
 			country.RegionCount += 1
 
 			if data.Capture ~= nil then
-				country.CaptureTotal += data.Capture
+				country.CaptureTotal +=
+					data.Capture
+
 				country.CaptureCount += 1
 			end
 
 			if data.Defence ~= nil then
-				country.DefenceTotal += data.Defence
+				country.DefenceTotal +=
+					data.Defence
+
 				country.DefenceCount += 1
 			end
 
@@ -1046,21 +1236,30 @@ local function GetCountries()
 	for _, country in pairs(map) do
 		if country.CaptureCount > 0 then
 			country.AverageCapture =
-				country.CaptureTotal / country.CaptureCount
+				country.CaptureTotal
+				/
+				country.CaptureCount
 		end
 
 		if country.DefenceCount > 0 then
 			country.AverageDefence =
-				country.DefenceTotal / country.DefenceCount
+				country.DefenceTotal
+				/
+				country.DefenceCount
 		end
 
-		table.insert(result, country)
+		table.insert(
+			result,
+			country
+		)
 	end
 
 	table.sort(
 		result,
 		function(a, b)
-			return a.Name:lower() < b.Name:lower()
+			return a.Name:lower()
+				<
+				b.Name:lower()
 		end
 	)
 
@@ -1068,7 +1267,9 @@ local function GetCountries()
 end
 
 local function GetCountry(name)
-	for _, country in ipairs(GetCountries()) do
+	for _, country in ipairs(
+		GetCountries()
+	) do
 		if country.Name == name then
 			return country
 		end
@@ -1082,25 +1283,55 @@ end
 --==============================================================
 
 local OriginalLighting = {
-	ClockTime = Lighting.ClockTime,
-	Brightness = Lighting.Brightness,
-	Exposure = Lighting.ExposureCompensation,
-	FogStart = Lighting.FogStart,
-	FogEnd = Lighting.FogEnd,
-	GlobalShadows = Lighting.GlobalShadows,
-	Ambient = Lighting.Ambient,
-	OutdoorAmbient = Lighting.OutdoorAmbient,
+	ClockTime =
+		Lighting.ClockTime,
+
+	Brightness =
+		Lighting.Brightness,
+
+	Exposure =
+		Lighting.ExposureCompensation,
+
+	FogStart =
+		Lighting.FogStart,
+
+	FogEnd =
+		Lighting.FogEnd,
+
+	GlobalShadows =
+		Lighting.GlobalShadows,
+
+	Ambient =
+		Lighting.Ambient,
+
+	OutdoorAmbient =
+		Lighting.OutdoorAmbient,
 }
 
 local function RestoreLighting()
-	Lighting.ClockTime = OriginalLighting.ClockTime
-	Lighting.Brightness = OriginalLighting.Brightness
-	Lighting.ExposureCompensation = OriginalLighting.Exposure
-	Lighting.FogStart = OriginalLighting.FogStart
-	Lighting.FogEnd = OriginalLighting.FogEnd
-	Lighting.GlobalShadows = OriginalLighting.GlobalShadows
-	Lighting.Ambient = OriginalLighting.Ambient
-	Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+	Lighting.ClockTime =
+		OriginalLighting.ClockTime
+
+	Lighting.Brightness =
+		OriginalLighting.Brightness
+
+	Lighting.ExposureCompensation =
+		OriginalLighting.Exposure
+
+	Lighting.FogStart =
+		OriginalLighting.FogStart
+
+	Lighting.FogEnd =
+		OriginalLighting.FogEnd
+
+	Lighting.GlobalShadows =
+		OriginalLighting.GlobalShadows
+
+	Lighting.Ambient =
+		OriginalLighting.Ambient
+
+	Lighting.OutdoorAmbient =
+		OriginalLighting.OutdoorAmbient
 end
 
 --==============================================================
@@ -1108,16 +1339,29 @@ end
 --==============================================================
 
 local function ApplyColor()
-	if not ColorEffect or not ColorEffect.Parent then
-		ColorEffect = Instance.new("ColorCorrectionEffect")
+	if not ColorEffect
+		or not ColorEffect.Parent
+	then
+		ColorEffect =
+			Instance.new(
+				"ColorCorrectionEffect"
+			)
 
-		ColorEffect.Name = "TEAM_PRIME_COLOR"
-		ColorEffect.Parent = Lighting
+		ColorEffect.Name =
+			"TEAM_PRIME_COLOR"
+
+		ColorEffect.Parent =
+			Lighting
 	end
 
-	ColorEffect.Saturation = Config.ColorSaturation
-	ColorEffect.Contrast = Config.ColorContrast
-	ColorEffect.Brightness = Config.ColorBrightness
+	ColorEffect.Saturation =
+		Config.ColorSaturation
+
+	ColorEffect.Contrast =
+		Config.ColorContrast
+
+	ColorEffect.Brightness =
+		Config.ColorBrightness
 end
 
 --==============================================================
@@ -1125,9 +1369,15 @@ end
 --==============================================================
 
 local function ClearESP()
-	for player, objects in pairs(ESPObjects) do
-		for _, object in ipairs(objects) do
-			if object and object.Parent then
+	for player, objects in pairs(
+		ESPObjects
+	) do
+		for _, object in ipairs(
+			objects
+		) do
+			if object
+				and object.Parent
+			then
 				object:Destroy()
 			end
 		end
@@ -1143,38 +1393,80 @@ local function RefreshESP()
 		return
 	end
 
-	for _, player in ipairs(Players:GetPlayers()) do
-		if player ~= LocalPlayer and player.Character then
+	for _, player in ipairs(
+		Players:GetPlayers()
+	) do
+		if player ~= LocalPlayer
+			and player.Character
+		then
 			local root =
-				player.Character:FindFirstChild("HumanoidRootPart")
+				player.Character:FindFirstChild(
+					"HumanoidRootPart"
+				)
 
 			if root then
-				local highlight = Instance.new("Highlight")
+				local highlight =
+					Instance.new(
+						"Highlight"
+					)
 
-				highlight.Name = "TEAM_PRIME_ESP"
-				highlight.FillColor = GetTheme().Accent
-				highlight.FillTransparency = 0.78
-				highlight.OutlineColor = GetTheme().Accent2
+				highlight.Name =
+					"TEAM_PRIME_ESP"
+
+				highlight.FillColor =
+					GetTheme().Accent
+
+				highlight.FillTransparency =
+					0.78
+
+				highlight.OutlineColor =
+					GetTheme().Accent2
+
 				highlight.DepthMode =
 					Enum.HighlightDepthMode.AlwaysOnTop
-				highlight.Parent = player.Character
 
-				local tag = Instance.new("BillboardGui")
+				highlight.Parent =
+					player.Character
 
-				tag.Name = "TEAM_PRIME_TAG"
+				local tag =
+					Instance.new(
+						"BillboardGui"
+					)
+
+				tag.Name =
+					"TEAM_PRIME_TAG"
+
 				tag.Adornee = root
 				tag.AlwaysOnTop = true
-				tag.Size = UDim2.fromOffset(180, 25)
-				tag.StudsOffset = Vector3.new(0, 3, 0)
+
+				tag.Size =
+					UDim2.fromOffset(
+						180,
+						25
+					)
+
+				tag.StudsOffset =
+					Vector3.new(
+						0,
+						3,
+						0
+					)
+
 				tag.Parent = root
 
 				AddLabel(
 					tag,
 					player.DisplayName,
 
-					UDim2.fromScale(0, 0),
+					UDim2.fromScale(
+						0,
+						0
+					),
 
-					UDim2.fromScale(1, 1),
+					UDim2.fromScale(
+						1,
+						1
+					),
 
 					11,
 
@@ -1204,18 +1496,22 @@ local function ClearCubes()
 		CubeConnection = nil
 	end
 
-	for _, item in ipairs(CubeObjects) do
-		if item.Part and item.Part.Parent then
+	for _, item in ipairs(
+		CubeObjects
+	) do
+		if item.Part
+			and item.Part.Parent
+		then
 			item.Part:Destroy()
 		end
 	end
 
-	for index = #CubeObjects, 1, -1 do
-		CubeObjects[index] = nil
-	end
+	table.clear(CubeObjects)
 
 	local folder =
-		workspace:FindFirstChild("TEAM_PRIME_LOCAL_CUBES")
+		workspace:FindFirstChild(
+			"TEAM_PRIME_LOCAL_CUBES"
+		)
 
 	if folder then
 		folder:Destroy()
@@ -1229,27 +1525,49 @@ local function CreateCubes()
 		return
 	end
 
-	local folder = Instance.new("Folder")
+	local folder =
+		Instance.new("Folder")
 
-	folder.Name = "TEAM_PRIME_LOCAL_CUBES"
-	folder.Parent = workspace
+	folder.Name =
+		"TEAM_PRIME_LOCAL_CUBES"
 
-	for _ = 1, Config.CubesAmount do
-		local part = Instance.new("Part")
+	folder.Parent =
+		workspace
 
-		part.Name = "PrimeCube"
+	for _ = 1,
+		Config.CubesAmount
+	do
+		local part =
+			Instance.new("Part")
+
+		part.Name =
+			"PrimeCube"
+
 		part.Anchored = true
 		part.CanCollide = false
 		part.CanTouch = false
 		part.CanQuery = false
 		part.CastShadow = false
-		part.Material = Enum.Material.Neon
-		part.Color = GetTheme().Accent
-		part.Transparency = Config.CubesTransparency
 
-		local size = Config.CubesSize
+		part.Material =
+			Enum.Material.Neon
 
-		part.Size = Vector3.new(size, size, size)
+		part.Color =
+			GetTheme().Accent
+
+		part.Transparency =
+			Config.CubesTransparency
+
+		local size =
+			Config.CubesSize
+
+		part.Size =
+			Vector3.new(
+				size,
+				size,
+				size
+			)
+
 		part.Parent = folder
 
 		table.insert(
@@ -1290,17 +1608,25 @@ local function CreateCubes()
 					return
 				end
 
-				local camera = workspace.CurrentCamera
+				local camera =
+					workspace.CurrentCamera
 
 				if not camera then
 					return
 				end
 
-				local center = camera.CFrame.Position
-				local now = os.clock()
+				local center =
+					camera.CFrame.Position
 
-				for _, item in ipairs(CubeObjects) do
-					if item.Part and item.Part.Parent then
+				local now =
+					os.clock()
+
+				for _, item in ipairs(
+					CubeObjects
+				) do
+					if item.Part
+						and item.Part.Parent
+					then
 						local phase =
 							now
 							* Config.CubesSpeed
@@ -1312,20 +1638,26 @@ local function CreateCubes()
 
 						local position =
 							center
-							+ Vector3.new(
+							+
+							Vector3.new(
 								math.cos(angle)
-									* item.Distance,
+								* item.Distance,
 
 								item.Height
-									+ math.sin(phase) * 4,
+								+
+								math.sin(phase)
+								* 4,
 
 								math.sin(angle)
-									* item.Distance
+								* item.Distance
 							)
 
 						item.Part.CFrame =
-							CFrame.new(position)
-							* CFrame.Angles(
+							CFrame.new(
+								position
+							)
+							*
+							CFrame.Angles(
 								phase
 									* Config.CubesRotation,
 
@@ -1344,32 +1676,48 @@ end
 --==============================================================
 
 local function ExtractMusicId(input)
-	input = tostring(input or "")
-	input = input:gsub("%s+", "")
+	input =
+		tostring(input or "")
+
+	input =
+		input:gsub(
+			"%s+",
+			""
+		)
 
 	if input == "" then
 		return nil
 	end
 
-	local id = input:match("^%d+$")
+	local id =
+		input:match("^%d+$")
 
 	if id then
 		return id
 	end
 
-	id = input:match("rbxassetid://(%d+)")
+	id =
+		input:match(
+			"rbxassetid://(%d+)"
+		)
 
 	if id then
 		return id
 	end
 
-	id = input:match("/library/(%d+)")
+	id =
+		input:match(
+			"/library/(%d+)"
+		)
 
 	if id then
 		return id
 	end
 
-	id = input:match("/catalog/(%d+)")
+	id =
+		input:match(
+			"/catalog/(%d+)"
+		)
 
 	if id then
 		return id
@@ -1391,7 +1739,6 @@ end
 
 --==============================================================
 -- FLY
--- NO STUDIO FILTER
 --==============================================================
 
 local function StopFly()
@@ -1404,22 +1751,29 @@ local function StopFly()
 
 	if FlyState.Velocity then
 		FlyState.Velocity:Destroy()
+		FlyState.Velocity = nil
 	end
 
 	if FlyState.Orientation then
 		FlyState.Orientation:Destroy()
+		FlyState.Orientation = nil
 	end
 
 	if FlyState.Attachment then
 		FlyState.Attachment:Destroy()
+		FlyState.Attachment = nil
 	end
 
-	if FlyState.Humanoid and FlyState.Humanoid.Parent then
+	if FlyState.Humanoid
+		and FlyState.Humanoid.Parent
+	then
 		FlyState.Humanoid.AutoRotate = true
 		FlyState.Humanoid.PlatformStand = false
 	end
 
-	if FlyState.Animate and FlyState.Animate.Parent then
+	if FlyState.Animate
+		and FlyState.Animate.Parent
+	then
 		pcall(function()
 			FlyState.Animate.Enabled = true
 		end)
@@ -1428,38 +1782,49 @@ local function StopFly()
 	FlyState.Humanoid = nil
 	FlyState.Root = nil
 	FlyState.Animate = nil
-	FlyState.Attachment = nil
-	FlyState.Velocity = nil
-	FlyState.Orientation = nil
 end
 
 local function StartFly()
 
-	-- STUDIO CHECK REMOVED
+	--==========================================================
+	-- NO IsStudio CHECK
+	--==========================================================
 
 	StopFly()
 
-	local character = LocalPlayer.Character
+	local character =
+		LocalPlayer.Character
 
 	if not character then
 		return false
 	end
 
 	local humanoid =
-		character:FindFirstChildOfClass("Humanoid")
+		character:FindFirstChildOfClass(
+			"Humanoid"
+		)
 
 	local root =
-		character:FindFirstChild("HumanoidRootPart")
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
 
-	if not humanoid or not root then
+	if not humanoid
+		or not root
+	then
 		return false
 	end
 
-	FlyState.Humanoid = humanoid
-	FlyState.Root = root
+	FlyState.Humanoid =
+		humanoid
+
+	FlyState.Root =
+		root
 
 	FlyState.Animate =
-		character:FindFirstChild("Animate")
+		character:FindFirstChild(
+			"Animate"
+		)
 
 	if FlyState.Animate then
 		pcall(function()
@@ -1470,37 +1835,73 @@ local function StartFly()
 	humanoid.AutoRotate = false
 	humanoid.PlatformStand = true
 
-	local attachment = Instance.new("Attachment")
+	local attachment =
+		Instance.new(
+			"Attachment"
+		)
 
-	attachment.Name = "TEAM_PRIME_FLY"
+	attachment.Name =
+		"TEAM_PRIME_FLY"
+
 	attachment.Parent = root
 
-	FlyState.Attachment = attachment
+	FlyState.Attachment =
+		attachment
 
-	local velocity = Instance.new("LinearVelocity")
+	local velocity =
+		Instance.new(
+			"LinearVelocity"
+		)
 
-	velocity.Name = "TEAM_PRIME_FLY_VELOCITY"
-	velocity.Attachment0 = attachment
-	velocity.RelativeTo = Enum.ActuatorRelativeTo.World
-	velocity.MaxForce = math.huge
-	velocity.VectorVelocity = Vector3.zero
+	velocity.Name =
+		"TEAM_PRIME_FLY_VELOCITY"
+
+	velocity.Attachment0 =
+		attachment
+
+	velocity.RelativeTo =
+		Enum.ActuatorRelativeTo.World
+
+	velocity.MaxForce =
+		math.huge
+
+	velocity.VectorVelocity =
+		Vector3.zero
+
 	velocity.Parent = root
 
-	FlyState.Velocity = velocity
+	FlyState.Velocity =
+		velocity
 
-	local orientation = Instance.new("AlignOrientation")
+	local orientation =
+		Instance.new(
+			"AlignOrientation"
+		)
 
-	orientation.Name = "TEAM_PRIME_FLY_ORIENTATION"
+	orientation.Name =
+		"TEAM_PRIME_FLY_ORIENTATION"
+
 	orientation.Mode =
 		Enum.OrientationAlignmentMode.OneAttachment
 
-	orientation.Attachment0 = attachment
-	orientation.MaxTorque = math.huge
-	orientation.Responsiveness = 200
-	orientation.RigidityEnabled = true
-	orientation.Parent = root
+	orientation.Attachment0 =
+		attachment
 
-	FlyState.Orientation = orientation
+	orientation.MaxTorque =
+		math.huge
+
+	orientation.Responsiveness =
+		200
+
+	orientation.RigidityEnabled =
+		true
+
+	orientation.Parent =
+		root
+
+	FlyState.Orientation =
+		orientation
+
 	FlyState.Enabled = true
 
 	FlyState.Connection =
@@ -1514,63 +1915,76 @@ local function StartFly()
 					return
 				end
 
-				local camera = workspace.CurrentCamera
+				local camera =
+					workspace.CurrentCamera
 
 				if not camera then
 					return
 				end
 
-				local direction = Vector3.zero
+				local direction =
+					Vector3.zero
 
 				if UserInputService:IsKeyDown(
 					Enum.KeyCode.W
 				) then
-					direction += camera.CFrame.LookVector
+					direction +=
+						camera.CFrame.LookVector
 				end
 
 				if UserInputService:IsKeyDown(
 					Enum.KeyCode.S
 				) then
-					direction -= camera.CFrame.LookVector
+					direction -=
+						camera.CFrame.LookVector
 				end
 
 				if UserInputService:IsKeyDown(
 					Enum.KeyCode.A
 				) then
-					direction -= camera.CFrame.RightVector
+					direction -=
+						camera.CFrame.RightVector
 				end
 
 				if UserInputService:IsKeyDown(
 					Enum.KeyCode.D
 				) then
-					direction += camera.CFrame.RightVector
+					direction +=
+						camera.CFrame.RightVector
 				end
 
 				if UserInputService:IsKeyDown(
 					Enum.KeyCode.Space
 				) then
-					direction += Vector3.yAxis
+					direction +=
+						Vector3.yAxis
 				end
 
 				if UserInputService:IsKeyDown(
 					Enum.KeyCode.LeftControl
 				) then
-					direction -= Vector3.yAxis
+					direction -=
+						Vector3.yAxis
 				end
 
 				if direction.Magnitude > 0 then
 					direction =
 						direction.Unit
-						* Config.FlySpeed
+						*
+						Config.FlySpeed
 				end
 
-				velocity.VectorVelocity = direction
+				velocity.VectorVelocity =
+					direction
+
+				local look =
+					camera.CFrame.LookVector
 
 				local flatLook =
 					Vector3.new(
-						camera.CFrame.LookVector.X,
+						look.X,
 						0,
-						camera.CFrame.LookVector.Z
+						look.Z
 					)
 
 				if flatLook.Magnitude > 0 then
@@ -1591,7 +2005,9 @@ end
 --==============================================================
 
 local function ClearPage()
-	DisconnectList(State.PageConnections)
+	DisconnectList(
+		State.PageConnections
+	)
 
 	RegionMonitorToken += 1
 
@@ -1599,38 +2015,63 @@ local function ClearPage()
 		return
 	end
 
-	for _, child in ipairs(UI.PageContainer:GetChildren()) do
+	for _, child in ipairs(
+		UI.PageContainer:GetChildren()
+	) do
 		if child:IsA("GuiObject") then
 			child:Destroy()
 		end
 	end
 
-	UI.PageContainer.CanvasPosition = Vector2.zero
+	UI.PageContainer.CanvasPosition =
+		Vector2.zero
 end
 
 local function Section(title, description)
-	local frame = New("Frame", UI.PageContainer)
+	local frame =
+		New(
+			"Frame",
+			UI.PageContainer
+		)
 
 	Apply(
 		frame,
 		{
-			Size = UDim2.new(1, -5, 0, 74),
+			Size =
+				UDim2.new(
+					1,
+					-5,
+					0,
+					74
+				),
 
-			BackgroundColor3 = GetTheme().Card,
+			BackgroundColor3 =
+				GetTheme().Card,
 
 			BorderSizePixel = 0,
 		}
 	)
 
-	AddCorner(frame, 9)
+	AddCorner(
+		frame,
+		9
+	)
 
 	AddLabel(
 		frame,
 		title,
 
-		UDim2.fromOffset(14, 8),
+		UDim2.fromOffset(
+			14,
+			8
+		),
 
-		UDim2.new(1, -28, 0, 20),
+		UDim2.new(
+			1,
+			-28,
+			0,
+			20
+		),
 
 		11,
 
@@ -1645,9 +2086,17 @@ local function Section(title, description)
 		frame,
 		description or "",
 
-		UDim2.fromOffset(14, 32),
+		UDim2.fromOffset(
+			14,
+			32
+		),
 
-		UDim2.new(1, -28, 0, 34),
+		UDim2.new(
+			1,
+			-28,
+			0,
+			34
+		),
 
 		9,
 
@@ -1661,15 +2110,31 @@ local function Section(title, description)
 	return frame
 end
 
-local function Card(title, description, callback, accent)
-	local button = New("TextButton", UI.PageContainer)
+local function Card(
+	title,
+	description,
+	callback,
+	accent
+)
+	local button =
+		New(
+			"TextButton",
+			UI.PageContainer
+		)
 
 	Apply(
 		button,
 		{
-			Size = UDim2.new(1, -5, 0, 62),
+			Size =
+				UDim2.new(
+					1,
+					-5,
+					0,
+					62
+				),
 
-			BackgroundColor3 = GetTheme().Card,
+			BackgroundColor3 =
+				GetTheme().Card,
 
 			BorderSizePixel = 0,
 
@@ -1683,14 +2148,25 @@ local function Card(title, description, callback, accent)
 		}
 	)
 
-	AddCorner(button, 9)
+	AddCorner(
+		button,
+		9
+	)
 
-	local stripe = New("Frame", button)
+	local stripe =
+		New(
+			"Frame",
+			button
+		)
 
 	Apply(
 		stripe,
 		{
-			Size = UDim2.fromOffset(3, 62),
+			Size =
+				UDim2.fromOffset(
+					3,
+					62
+				),
 
 			BackgroundColor3 =
 				accent
@@ -1704,9 +2180,17 @@ local function Card(title, description, callback, accent)
 		button,
 		title,
 
-		UDim2.fromOffset(17, 8),
+		UDim2.fromOffset(
+			17,
+			8
+		),
 
-		UDim2.new(1, -65, 0, 20),
+		UDim2.new(
+			1,
+			-65,
+			0,
+			20
+		),
 
 		11,
 
@@ -1721,9 +2205,17 @@ local function Card(title, description, callback, accent)
 		button,
 		description or "",
 
-		UDim2.fromOffset(17, 31),
+		UDim2.fromOffset(
+			17,
+			31
+		),
 
-		UDim2.new(1, -65, 0, 18),
+		UDim2.new(
+			1,
+			-65,
+			0,
+			18
+		),
 
 		9,
 
@@ -1738,9 +2230,17 @@ local function Card(title, description, callback, accent)
 		button,
 		"›",
 
-		UDim2.new(1, -32, 0, 18),
+		UDim2.new(
+			1,
+			-32,
+			0,
+			18
+		),
 
-		UDim2.fromOffset(20, 22),
+		UDim2.fromOffset(
+			20,
+			22
+		),
 
 		20,
 
@@ -1765,10 +2265,10 @@ local function Card(title, description, callback, accent)
 						return
 					end
 
-					local success, err =
+					local ok, err =
 						pcall(callback)
 
-					if not success then
+					if not ok then
 						warn(
 							"[TEAM PRIME HUB] CALLBACK:",
 							err
@@ -1782,15 +2282,30 @@ local function Card(title, description, callback, accent)
 	return button
 end
 
-local function Toggle(title, value, callback)
-	local button = New("TextButton", UI.PageContainer)
+local function Toggle(
+	title,
+	value,
+	callback
+)
+	local button =
+		New(
+			"TextButton",
+			UI.PageContainer
+		)
 
 	Apply(
 		button,
 		{
-			Size = UDim2.new(1, -5, 0, 58),
+			Size =
+				UDim2.new(
+					1,
+					-5,
+					0,
+					58
+				),
 
-			BackgroundColor3 = GetTheme().Card,
+			BackgroundColor3 =
+				GetTheme().Card,
 
 			BorderSizePixel = 0,
 
@@ -1804,15 +2319,26 @@ local function Toggle(title, value, callback)
 		}
 	)
 
-	AddCorner(button, 9)
+	AddCorner(
+		button,
+		9
+	)
 
 	AddLabel(
 		button,
 		title,
 
-		UDim2.fromOffset(14, 9),
+		UDim2.fromOffset(
+			14,
+			9
+		),
 
-		UDim2.new(1, -120, 0, 22),
+		UDim2.new(
+			1,
+			-120,
+			0,
+			22
+		),
 
 		11,
 
@@ -1831,9 +2357,17 @@ local function Toggle(title, value, callback)
 				and T("on")
 				or T("off"),
 
-			UDim2.new(1, -90, 0, 18),
+			UDim2.new(
+				1,
+				-90,
+				0,
+				18
+			),
 
-			UDim2.fromOffset(75, 22),
+			UDim2.fromOffset(
+				75,
+				22
+			),
 
 			10,
 
@@ -1846,7 +2380,8 @@ local function Toggle(title, value, callback)
 			Enum.TextXAlignment.Right
 		)
 
-	local current = value == true
+	local current =
+		value == true
 
 	AddHover(
 		button,
@@ -1894,14 +2429,25 @@ local function Slider(
 	callback,
 	formatter
 )
-	local frame = New("Frame", UI.PageContainer)
+	local frame =
+		New(
+			"Frame",
+			UI.PageContainer
+		)
 
 	Apply(
 		frame,
 		{
-			Size = UDim2.new(1, -5, 0, 80),
+			Size =
+				UDim2.new(
+					1,
+					-5,
+					0,
+					80
+				),
 
-			BackgroundColor3 = GetTheme().Card,
+			BackgroundColor3 =
+				GetTheme().Card,
 
 			BorderSizePixel = 0,
 		}
@@ -1913,9 +2459,17 @@ local function Slider(
 		frame,
 		title,
 
-		UDim2.fromOffset(14, 8),
+		UDim2.fromOffset(
+			14,
+			8
+		),
 
-		UDim2.new(1, -120, 0, 20),
+		UDim2.new(
+			1,
+			-120,
+			0,
+			20
+		),
 
 		10,
 
@@ -1931,9 +2485,17 @@ local function Slider(
 			frame,
 			"",
 
-			UDim2.new(1, -95, 0, 8),
+			UDim2.new(
+				1,
+				-95,
+				0,
+				8
+			),
 
-			UDim2.fromOffset(80, 20),
+			UDim2.fromOffset(
+				80,
+				20
+			),
 
 			10,
 
@@ -1944,16 +2506,31 @@ local function Slider(
 			Enum.TextXAlignment.Right
 		)
 
-	local bar = New("Frame", frame)
+	local bar =
+		New(
+			"Frame",
+			frame
+		)
 
 	Apply(
 		bar,
 		{
-			Position = UDim2.fromOffset(14, 49),
+			Position =
+				UDim2.fromOffset(
+					14,
+					49
+				),
 
-			Size = UDim2.new(1, -28, 0, 6),
+			Size =
+				UDim2.new(
+					1,
+					-28,
+					0,
+					6
+				),
 
-			BackgroundColor3 = GetTheme().Background,
+			BackgroundColor3 =
+				GetTheme().Background,
 
 			BorderSizePixel = 0,
 
@@ -1963,14 +2540,25 @@ local function Slider(
 
 	AddCorner(bar, 6)
 
-	local fill = New("Frame", bar)
+	local fill =
+		New(
+			"Frame",
+			bar
+		)
 
 	Apply(
 		fill,
 		{
-			Size = UDim2.new(0, 0, 1, 0),
+			Size =
+				UDim2.new(
+					0,
+					0,
+					1,
+					0
+				),
 
-			BackgroundColor3 = GetTheme().Accent,
+			BackgroundColor3 =
+				GetTheme().Accent,
 
 			BorderSizePixel = 0,
 		}
@@ -1978,18 +2566,37 @@ local function Slider(
 
 	AddCorner(fill, 6)
 
-	local knob = New("Frame", bar)
+	local knob =
+		New(
+			"Frame",
+			bar
+		)
 
 	Apply(
 		knob,
 		{
-			AnchorPoint = Vector2.new(0.5, 0.5),
+			AnchorPoint =
+				Vector2.new(
+					0.5,
+					0.5
+				),
 
-			Position = UDim2.new(0, 0, 0.5, 0),
+			Position =
+				UDim2.new(
+					0,
+					0,
+					0.5,
+					0
+				),
 
-			Size = UDim2.fromOffset(14, 14),
+			Size =
+				UDim2.fromOffset(
+					14,
+					14
+				),
 
-			BackgroundColor3 = GetTheme().Accent2,
+			BackgroundColor3 =
+				GetTheme().Accent2,
 
 			BorderSizePixel = 0,
 		}
@@ -2012,19 +2619,30 @@ local function Slider(
 		end
 
 		if step < 1 then
-			return string.format("%.2f", number)
+			return string.format(
+				"%.2f",
+				number
+			)
 		end
 
 		return tostring(
-			math.floor(number + 0.5)
+			math.floor(
+				number + 0.5
+			)
 		)
 	end
 
 	local function ApplyValue(number)
 		local snapped =
 			math.floor(
-				number / step + 0.5
-			) * step
+				number
+				/
+				step
+				+
+				0.5
+			)
+			*
+			step
 
 		current =
 			math.clamp(
@@ -2040,8 +2658,13 @@ local function Slider(
 
 		if range > 0 then
 			alpha =
-				(current - minimum)
-				/ range
+				(
+					current
+					-
+					minimum
+				)
+				/
+				range
 		end
 
 		fill.Size =
@@ -2071,7 +2694,8 @@ local function Slider(
 	end
 
 	local function FromX(x)
-		local width = bar.AbsoluteSize.X
+		local width =
+			bar.AbsoluteSize.X
 
 		if width <= 0 then
 			return
@@ -2081,9 +2705,11 @@ local function Slider(
 			math.clamp(
 				(
 					x
-					- bar.AbsolutePosition.X
+					-
+					bar.AbsolutePosition.X
 				)
-				/ width,
+				/
+				width,
 
 				0,
 				1
@@ -2092,8 +2718,13 @@ local function Slider(
 		local result =
 			minimum
 			+
-			(maximum - minimum)
-			* alpha
+			(
+				maximum
+				-
+				minimum
+			)
+			*
+			alpha
 
 		ApplyValue(result)
 	end
@@ -2103,11 +2734,15 @@ local function Slider(
 			function(input)
 				if input.UserInputType ==
 					Enum.UserInputType.MouseButton1
-					or input.UserInputType ==
+					or
+					input.UserInputType ==
 					Enum.UserInputType.Touch
 				then
 					dragging = true
-					FromX(input.Position.X)
+
+					FromX(
+						input.Position.X
+					)
 				end
 			end
 		)
@@ -2122,13 +2757,16 @@ local function Slider(
 
 				if input.UserInputType ~=
 					Enum.UserInputType.MouseMovement
-					and input.UserInputType ~=
+					and
+					input.UserInputType ~=
 					Enum.UserInputType.Touch
 				then
 					return
 				end
 
-				FromX(input.Position.X)
+				FromX(
+					input.Position.X
+				)
 			end
 		)
 	)
@@ -2138,7 +2776,8 @@ local function Slider(
 			function(input)
 				if input.UserInputType ==
 					Enum.UserInputType.MouseButton1
-					or input.UserInputType ==
+					or
+					input.UserInputType ==
 					Enum.UserInputType.Touch
 				then
 					dragging = false
@@ -2159,8 +2798,11 @@ end
 Pages.Home = function()
 	ClearPage()
 
-	UI.PageTitle.Text = T("home")
-	UI.PageDescription.Text = T("subtitle")
+	UI.PageTitle.Text =
+		T("home")
+
+	UI.PageDescription.Text =
+		T("subtitle")
 
 	Section(
 		T("online"),
@@ -2181,15 +2823,21 @@ Pages.Home = function()
 
 		"ESP: "
 		.. (
-			ESPEnabled and T("on") or T("off")
+			ESPEnabled
+			and T("on")
+			or T("off")
 		)
 		.. "\nFLY: "
 		.. (
-			FlyState.Enabled and T("on") or T("off")
+			FlyState.Enabled
+			and T("on")
+			or T("off")
 		)
 		.. "\nMUSIC: "
 		.. (
-			MusicSound and T("on") or T("off")
+			MusicSound
+			and T("on")
+			or T("off")
 		)
 	)
 
@@ -2226,26 +2874,45 @@ Pages.Home = function()
 	)
 end
 
+--==============================================================
+-- REGIONS
+--==============================================================
+
 Pages.Regions = function()
 	ClearPage()
 
-	UI.PageTitle.Text = T("regions")
-	UI.PageDescription.Text = "Regions"
+	UI.PageTitle.Text =
+		T("regions")
 
-	local search = New("TextBox", UI.PageContainer)
+	UI.PageDescription.Text =
+		"Regions"
+
+	local search =
+		New(
+			"TextBox",
+			UI.PageContainer
+		)
 
 	Apply(
 		search,
 		{
-			Size = UDim2.new(1, -5, 0, 42),
+			Size =
+				UDim2.new(
+					1,
+					-5,
+					0,
+					42
+				),
 
-			BackgroundColor3 = GetTheme().Card,
+			BackgroundColor3 =
+				GetTheme().Card,
 
 			BorderSizePixel = 0,
 
 			Text = "",
 
-			PlaceholderText = T("search"),
+			PlaceholderText =
+				T("search"),
 
 			PlaceholderColor3 =
 				GetTheme().Muted,
@@ -2264,34 +2931,55 @@ Pages.Regions = function()
 
 	AddCorner(search, 8)
 
-	local list = New("Frame", UI.PageContainer)
+	local list =
+		New(
+			"Frame",
+			UI.PageContainer
+		)
 
 	Apply(
 		list,
 		{
-			Size = UDim2.new(1, -5, 0, 0),
+			Size =
+				UDim2.new(
+					1,
+					-5,
+					0,
+					0
+				),
 
-			AutomaticSize = Enum.AutomaticSize.Y,
+			AutomaticSize =
+				Enum.AutomaticSize.Y,
 
 			BackgroundTransparency = 1,
 		}
 	)
 
-	local layout = Instance.new("UIListLayout")
+	local layout =
+		Instance.new(
+			"UIListLayout"
+		)
 
-	layout.Padding = UDim.new(0, 5)
+	layout.Padding =
+		UDim.new(0, 5)
+
 	layout.Parent = list
 
 	local function Render()
-		for _, child in ipairs(list:GetChildren()) do
+		for _, child in ipairs(
+			list:GetChildren()
+		) do
 			if child:IsA("GuiObject") then
 				child:Destroy()
 			end
 		end
 
-		local query = search.Text:lower()
+		local query =
+			search.Text:lower()
 
-		for _, region in ipairs(GetRegions()) do
+		for _, region in ipairs(
+			GetRegions()
+		) do
 			if query == ""
 				or region.Name:lower():find(
 					query,
@@ -2299,7 +2987,10 @@ Pages.Regions = function()
 					true
 				)
 			then
-				local data = GetRegionData(region)
+				local data =
+					GetRegionData(
+						region
+					)
 
 				if data then
 					local button =
@@ -2322,8 +3013,7 @@ Pages.Regions = function()
 							BackgroundColor3 =
 								GetTheme().Card,
 
-							BorderSizePixel =
-								0,
+							BorderSizePixel = 0,
 
 							Text = "",
 
@@ -2370,10 +3060,14 @@ Pages.Regions = function()
 							data.Country
 							or "N/A"
 						)
-						.. " • "
-						.. T("capture")
-						.. ": "
-						.. (
+						..
+						" • "
+						..
+						T("capture")
+						..
+						": "
+						..
+						(
 							data.Capture
 							and string.format(
 								"%.1f%%",
@@ -2381,10 +3075,14 @@ Pages.Regions = function()
 							)
 							or "N/A"
 						)
-						.. " • "
-						.. T("defence")
-						.. ": "
-						.. (
+						..
+						" • "
+						..
+						T("defence")
+						..
+						": "
+						..
+						(
 							data.Defence
 							and string.format(
 								"%.1f%%",
@@ -2446,6 +3144,10 @@ Pages.Regions = function()
 	Render()
 end
 
+--==============================================================
+-- REGION
+--==============================================================
+
 Pages.Region = function()
 	ClearPage()
 
@@ -2455,7 +3157,8 @@ Pages.Region = function()
 		)
 
 	if not data then
-		UI.PageTitle.Text = T("error")
+		UI.PageTitle.Text =
+			T("error")
 
 		Card(
 			T("back"),
@@ -2470,7 +3173,8 @@ Pages.Region = function()
 		return
 	end
 
-	UI.PageTitle.Text = data.Name
+	UI.PageTitle.Text =
+		data.Name
 
 	UI.PageDescription.Text =
 		data.Instance:GetFullName()
@@ -2478,7 +3182,8 @@ Pages.Region = function()
 	Section(
 		T("country"),
 		tostring(
-			data.Country or "N/A"
+			data.Country
+			or "N/A"
 		)
 	)
 
@@ -2546,14 +3251,54 @@ Pages.Region = function()
 		end
 	)
 
+	if State.SelectedRegion then
+		if State.SelectedRegion:FindFirstChild(
+			"CaptureValue",
+			true
+		) then
+			Card(
+				"Capture = 100",
+				"Test",
+				function()
+					local object =
+						State.SelectedRegion:FindFirstChild(
+							"CaptureValue",
+							true
+						)
+
+					if object
+						and object:IsA(
+							"NumberValue"
+						)
+						or object
+						and object:IsA(
+							"IntValue"
+						)
+					then
+						object.Value = 100
+						Router:Open(
+							"Region"
+						)
+					end
+				end
+			)
+		end
+	end
+
 	Card(
 		T("back"),
 		"",
 		function()
-			Router:Open("Regions")
+			Router:Open(
+				"Regions"
+			)
 		end
 	)
 end
+
+--==============================================================
+-- REGION MONITOR
+--==============================================================
 
 Pages.RegionMonitor = function()
 	ClearPage()
@@ -2582,27 +3327,40 @@ Pages.RegionMonitor = function()
 
 	local labels = {}
 
-	for _, child in ipairs(section:GetChildren()) do
-		if child:IsA("TextLabel") then
-			table.insert(labels, child)
+	for _, child in ipairs(
+		section:GetChildren()
+	) do
+		if child:IsA(
+			"TextLabel"
+		) then
+			table.insert(
+				labels,
+				child
+			)
 		end
 	end
 
-	local info = labels[2]
+	local info =
+		labels[2]
 
 	RegionMonitorToken += 1
 
-	local token = RegionMonitorToken
+	local token =
+		RegionMonitorToken
 
 	task.spawn(
 		function()
 			while
 				not State.Destroyed
-				and State.Page == "RegionMonitor"
-				and token == RegionMonitorToken
+				and State.Page ==
+					"RegionMonitor"
+				and token ==
+					RegionMonitorToken
 			do
 				local current =
-					GetRegionData(region)
+					GetRegionData(
+						region
+					)
 
 				if current
 					and info
@@ -2648,15 +3406,22 @@ Pages.RegionMonitor = function()
 		T("back"),
 		"",
 		function()
-			Router:Open("Region")
+			Router:Open(
+				"Region"
+			)
 		end
 	)
 end
 
+--==============================================================
+-- COUNTRIES
+--==============================================================
+
 Pages.Countries = function()
 	ClearPage()
 
-	UI.PageTitle.Text = T("countries")
+	UI.PageTitle.Text =
+		T("countries")
 
 	local search =
 		New(
@@ -2668,13 +3433,17 @@ Pages.Countries = function()
 		search,
 		{
 			Size =
-				UDim2.new(1, -5, 0, 42),
+				UDim2.new(
+					1,
+					-5,
+					0,
+					42
+				),
 
 			BackgroundColor3 =
 				GetTheme().Card,
 
-			BorderSizePixel =
-				0,
+			BorderSizePixel = 0,
 
 			Text = "",
 
@@ -2696,7 +3465,10 @@ Pages.Countries = function()
 		}
 	)
 
-	AddCorner(search, 8)
+	AddCorner(
+		search,
+		8
+	)
 
 	local list =
 		New(
@@ -2708,7 +3480,12 @@ Pages.Countries = function()
 		list,
 		{
 			Size =
-				UDim2.new(1, -5, 0, 0),
+				UDim2.new(
+					1,
+					-5,
+					0,
+					0
+				),
 
 			AutomaticSize =
 				Enum.AutomaticSize.Y,
@@ -2725,11 +3502,12 @@ Pages.Countries = function()
 	layout.Padding =
 		UDim.new(0, 5)
 
-	layout.Parent =
-		list
+	layout.Parent = list
 
 	local function Render()
-		for _, child in ipairs(list:GetChildren()) do
+		for _, child in ipairs(
+			list:GetChildren()
+		) do
 			if child:IsA("GuiObject") then
 				child:Destroy()
 			end
@@ -2738,7 +3516,9 @@ Pages.Countries = function()
 		local query =
 			search.Text:lower()
 
-		for _, country in ipairs(GetCountries()) do
+		for _, country in ipairs(
+			GetCountries()
+		) do
 			if query == ""
 				or country.Name:lower():find(
 					query,
@@ -2766,8 +3546,7 @@ Pages.Countries = function()
 						BackgroundColor3 =
 							GetTheme().Card,
 
-						BorderSizePixel =
-							0,
+						BorderSizePixel = 0,
 
 						Text = "",
 
@@ -2780,7 +3559,10 @@ Pages.Countries = function()
 					}
 				)
 
-				AddCorner(button, 8)
+				AddCorner(
+					button,
+					8
+				)
 
 				AddLabel(
 					button,
@@ -2953,9 +3735,13 @@ Pages.Country = function()
 		or "N/A"
 	)
 
-	for _, region in ipairs(country.Regions) do
+	for _, region in ipairs(
+		country.Regions
+	) do
 		local data =
-			GetRegionData(region)
+			GetRegionData(
+				region
+			)
 
 		if data then
 			Card(
@@ -2999,10 +3785,16 @@ Pages.Country = function()
 		T("back"),
 		"",
 		function()
-			Router:Open("Countries")
+			Router:Open(
+				"Countries"
+			)
 		end
 	)
 end
+
+--==============================================================
+-- PLAYERS
+--==============================================================
 
 Pages.Players = function()
 	ClearPage()
@@ -3015,15 +3807,16 @@ Pages.Players = function()
 
 	local found = false
 
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(
+		Players:GetPlayers()
+	) do
 		if player ~= LocalPlayer then
 			found = true
 
 			Card(
 				player.DisplayName,
 
-				"@"
-				.. player.Name,
+				"@" .. player.Name,
 
 				function()
 					local character =
@@ -3057,7 +3850,8 @@ Pages.Players = function()
 
 					root.CFrame =
 						targetRoot.CFrame
-						* CFrame.new(
+						*
+						CFrame.new(
 							0,
 							0,
 							5
@@ -3199,6 +3993,7 @@ Pages.World = function()
 		"",
 		function()
 			RestoreLighting()
+
 			Router:Open("World")
 		end,
 
@@ -3213,7 +4008,8 @@ Pages.World = function()
 		0.25,
 
 		function(value)
-			Lighting.ClockTime = value
+			Lighting.ClockTime =
+				value
 		end
 	)
 
@@ -3225,7 +4021,8 @@ Pages.World = function()
 		0.05,
 
 		function(value)
-			Lighting.Brightness = value
+			Lighting.Brightness =
+				value
 		end
 	)
 
@@ -3237,7 +4034,8 @@ Pages.World = function()
 		0.05,
 
 		function(value)
-			Lighting.ExposureCompensation = value
+			Lighting.ExposureCompensation =
+				value
 		end
 	)
 
@@ -3249,7 +4047,8 @@ Pages.World = function()
 		500,
 
 		function(value)
-			Lighting.FogEnd = value
+			Lighting.FogEnd =
+				value
 		end
 	)
 
@@ -3258,7 +4057,8 @@ Pages.World = function()
 		Lighting.GlobalShadows,
 
 		function(value)
-			Lighting.GlobalShadows = value
+			Lighting.GlobalShadows =
+				value
 		end
 	)
 end
@@ -3280,7 +4080,9 @@ Pages.Color = function()
 		0.01,
 
 		function(value)
-			Config.ColorSaturation = value
+			Config.ColorSaturation =
+				value
+
 			ApplyColor()
 		end
 	)
@@ -3293,7 +4095,9 @@ Pages.Color = function()
 		0.01,
 
 		function(value)
-			Config.ColorContrast = value
+			Config.ColorContrast =
+				value
+
 			ApplyColor()
 		end
 	)
@@ -3306,7 +4110,9 @@ Pages.Color = function()
 		0.01,
 
 		function(value)
-			Config.ColorBrightness = value
+			Config.ColorBrightness =
+				value
+
 			ApplyColor()
 		end
 	)
@@ -3345,7 +4151,8 @@ Pages.Cubes = function()
 		Config.CubesEnabled,
 
 		function(value)
-			Config.CubesEnabled = value
+			Config.CubesEnabled =
+				value
 
 			if value then
 				CreateCubes()
@@ -3363,7 +4170,8 @@ Pages.Cubes = function()
 		1,
 
 		function(value)
-			Config.CubesAmount = value
+			Config.CubesAmount =
+				value
 
 			if Config.CubesEnabled then
 				CreateCubes()
@@ -3379,9 +4187,12 @@ Pages.Cubes = function()
 		0.1,
 
 		function(value)
-			Config.CubesSize = value
+			Config.CubesSize =
+				value
 
-			for _, item in ipairs(CubeObjects) do
+			for _, item in ipairs(
+				CubeObjects
+			) do
 				if item.Part then
 					item.Part.Size =
 						Vector3.new(
@@ -3402,7 +4213,8 @@ Pages.Cubes = function()
 		0.1,
 
 		function(value)
-			Config.CubesSpeed = value
+			Config.CubesSpeed =
+				value
 		end
 	)
 
@@ -3414,7 +4226,8 @@ Pages.Cubes = function()
 		5,
 
 		function(value)
-			Config.CubesSpread = value
+			Config.CubesSpread =
+				value
 		end
 	)
 
@@ -3426,7 +4239,8 @@ Pages.Cubes = function()
 		0.1,
 
 		function(value)
-			Config.CubesRotation = value
+			Config.CubesRotation =
+				value
 		end
 	)
 
@@ -3438,11 +4252,15 @@ Pages.Cubes = function()
 		0.01,
 
 		function(value)
-			Config.CubesTransparency = value
+			Config.CubesTransparency =
+				value
 
-			for _, item in ipairs(CubeObjects) do
+			for _, item in ipairs(
+				CubeObjects
+			) do
 				if item.Part then
-					item.Part.Transparency = value
+					item.Part.Transparency =
+						value
 				end
 			end
 		end
@@ -3453,9 +4271,12 @@ Pages.Cubes = function()
 		"",
 		function()
 			Config.CubesEnabled = false
+
 			ClearCubes()
 
-			Router:Open("Cubes")
+			Router:Open(
+				"Cubes"
+			)
 		end,
 
 		GetTheme().Danger
@@ -3521,7 +4342,6 @@ end
 
 --==============================================================
 -- FLY PAGE
--- NO STUDIO FILTER
 --==============================================================
 
 Pages.Fly = function()
@@ -3533,15 +4353,16 @@ Pages.Fly = function()
 	UI.PageDescription.Text =
 		"WASD • SPACE • CTRL"
 
-	-- ФИЛЬТР IsStudio УДАЛЁН
-
 	Toggle(
 		T("fly"),
 		FlyState.Enabled,
 
 		function(value)
 			if value then
-				if not StartFly() then
+				local success =
+					StartFly()
+
+				if not success then
 					Notify(
 						T("error"),
 						"Character unavailable"
@@ -3561,7 +4382,8 @@ Pages.Fly = function()
 		5,
 
 		function(value)
-			Config.FlySpeed = value
+			Config.FlySpeed =
+				value
 		end
 	)
 end
@@ -3583,7 +4405,7 @@ Pages.Movement = function()
 end
 
 --==============================================================
--- MUSIC
+-- MUSIC PAGE
 --==============================================================
 
 Pages.Music = function()
@@ -3605,7 +4427,12 @@ Pages.Music = function()
 		input,
 		{
 			Size =
-				UDim2.new(1, -5, 0, 44),
+				UDim2.new(
+					1,
+					-5,
+					0,
+					44
+				),
 
 			BackgroundColor3 =
 				GetTheme().Card,
@@ -3632,7 +4459,10 @@ Pages.Music = function()
 		}
 	)
 
-	AddCorner(input, 8)
+	AddCorner(
+		input,
+		8
+	)
 
 	Card(
 		T("play"),
@@ -3655,13 +4485,17 @@ Pages.Music = function()
 			StopMusic()
 
 			MusicSound =
-				Instance.new("Sound")
+				Instance.new(
+					"Sound"
+				)
 
 			MusicSound.Name =
 				"TEAM_PRIME_MUSIC"
 
 			MusicSound.SoundId =
-				"rbxassetid://" .. id
+				"rbxassetid://"
+				..
+				id
 
 			MusicSound.Volume =
 				Config.MusicVolume
@@ -3709,10 +4543,12 @@ Pages.Music = function()
 		0.01,
 
 		function(value)
-			Config.MusicVolume = value
+			Config.MusicVolume =
+				value
 
 			if MusicSound then
-				MusicSound.Volume = value
+				MusicSound.Volume =
+					value
 			end
 		end,
 
@@ -3731,10 +4567,12 @@ Pages.Music = function()
 		Config.MusicLooped,
 
 		function(value)
-			Config.MusicLooped = value
+			Config.MusicLooped =
+				value
 
 			if MusicSound then
-				MusicSound.Looped = value
+				MusicSound.Looped =
+					value
 			end
 		end
 	)
@@ -3752,12 +4590,13 @@ Pages.Targets = function()
 
 	local ranked = {}
 
-	for _, region in ipairs(GetRegions()) do
+	for _, region in ipairs(
+		GetRegions()
+	) do
 		table.insert(
 			ranked,
 			{
 				Region = region,
-
 				Score =
 					GetRegionScore(
 						region
@@ -3779,7 +4618,9 @@ Pages.Targets = function()
 			""
 		)
 	else
-		for index, item in ipairs(ranked) do
+		for index, item in ipairs(
+			ranked
+		) do
 			if index > 25 then
 				break
 			end
@@ -3824,7 +4665,9 @@ Pages.Targets = function()
 		T("back"),
 		"",
 		function()
-			Router:Open("War")
+			Router:Open(
+				"War"
+			)
 		end
 	)
 end
@@ -3845,7 +4688,9 @@ Pages.Battle = function()
 			T("regions"),
 			"",
 			function()
-				Router:Open("Regions")
+				Router:Open(
+					"Regions"
+				)
 			end
 		)
 
@@ -3901,14 +4746,18 @@ Pages.Battle = function()
 	local bestName = ""
 	local bestScore = -math.huge
 
-	for _, scenario in ipairs(scenarios) do
+	for _, scenario in ipairs(
+		scenarios
+	) do
 		local ratio =
 			100
-			/ math.max(
+			/
+			math.max(
 				difficulty,
 				1
 			)
-			* scenario[2]
+			*
+			scenario[2]
 
 		local chance =
 			50
@@ -3919,7 +4768,8 @@ Pages.Battle = function()
 					0.05
 				)
 			)
-			* 20
+			*
+			20
 
 		chance =
 			math.clamp(
@@ -3936,7 +4786,8 @@ Pages.Battle = function()
 				-
 				scenario[3] * 50
 			)
-			* 0.25
+			*
+			0.25
 
 		if score > bestScore then
 			bestScore = score
@@ -3947,12 +4798,15 @@ Pages.Battle = function()
 			scenario[1],
 
 			"Win chance: "
-			.. string.format(
+			..
+			string.format(
 				"%.1f%%",
 				chance
 			)
-			.. "\nRisk: "
-			.. string.format(
+			..
+			"\nRisk: "
+			..
+			string.format(
 				"%.2f",
 				scenario[3]
 			)
@@ -3968,7 +4822,9 @@ Pages.Battle = function()
 		T("back"),
 		"",
 		function()
-			Router:Open("War")
+			Router:Open(
+				"War"
+			)
 		end
 	)
 end
@@ -3986,7 +4842,9 @@ Pages.Development = function()
 	local airports = 0
 	local shipyards = 0
 
-	for _, region in ipairs(regions) do
+	for _, region in ipairs(
+		regions
+	) do
 		local data =
 			GetRegionData(
 				region
@@ -4027,7 +4885,9 @@ Pages.Development = function()
 		T("back"),
 		"",
 		function()
-			Router:Open("War")
+			Router:Open(
+				"War"
+			)
 		end
 	)
 end
@@ -4042,7 +4902,9 @@ Pages.War = function()
 		T("targets"),
 		"",
 		function()
-			Router:Open("Targets")
+			Router:Open(
+				"Targets"
+			)
 		end
 	)
 
@@ -4050,7 +4912,9 @@ Pages.War = function()
 		T("battle"),
 		"",
 		function()
-			Router:Open("Battle")
+			Router:Open(
+				"Battle"
+			)
 		end
 	)
 
@@ -4058,7 +4922,9 @@ Pages.War = function()
 		T("countries"),
 		"",
 		function()
-			Router:Open("Countries")
+			Router:Open(
+				"Countries"
+			)
 		end
 	)
 
@@ -4066,7 +4932,9 @@ Pages.War = function()
 		T("development"),
 		"",
 		function()
-			Router:Open("Development")
+			Router:Open(
+				"Development"
+			)
 		end
 	)
 end
@@ -4090,7 +4958,9 @@ Pages.Language = function()
 
 			ApplyTheme()
 
-			Router:Open("Settings")
+			Router:Open(
+				"Settings"
+			)
 		end
 	)
 
@@ -4103,7 +4973,9 @@ Pages.Language = function()
 
 			ApplyTheme()
 
-			Router:Open("Settings")
+			Router:Open(
+				"Settings"
+			)
 		end
 	)
 end
@@ -4133,9 +5005,11 @@ Pages.Design = function()
 
 		function(value)
 			if MobileDevice then
-				Config.MobileWidth = value
+				Config.MobileWidth =
+					value
 			else
-				Config.Width = value
+				Config.Width =
+					value
 			end
 
 			State.NormalSize =
@@ -4167,9 +5041,11 @@ Pages.Design = function()
 
 		function(value)
 			if MobileDevice then
-				Config.MobileHeight = value
+				Config.MobileHeight =
+					value
 			else
-				Config.Height = value
+				Config.Height =
+					value
 			end
 
 			State.NormalSize =
@@ -4195,12 +5071,15 @@ Pages.Design = function()
 
 		function(value)
 			if MobileDevice then
-				Config.MobileScale = value
+				Config.MobileScale =
+					value
 			else
-				Config.Scale = value
+				Config.Scale =
+					value
 			end
 
-			UI.Scale.Scale = value
+			UI.Scale.Scale =
+				value
 		end,
 
 		function(value)
@@ -4219,7 +5098,8 @@ Pages.Design = function()
 		1,
 
 		function(value)
-			Config.Corner = value
+			Config.Corner =
+				value
 
 			local corner =
 				UI.Main:FindFirstChildOfClass(
@@ -4244,7 +5124,8 @@ Pages.Design = function()
 		0.01,
 
 		function(value)
-			Config.AnimationSpeed = value
+			Config.AnimationSpeed =
+				value
 		end
 	)
 
@@ -4256,7 +5137,8 @@ Pages.Design = function()
 		0.01,
 
 		function(value)
-			Config.Transparency = value
+			Config.Transparency =
+				value
 
 			UI.Sidebar.BackgroundTransparency =
 				value
@@ -4280,9 +5162,11 @@ Pages.Design = function()
 
 		function(value)
 			if MobileDevice then
-				Config.MobileSidebarWidth = value
+				Config.MobileSidebarWidth =
+					value
 			else
-				Config.SidebarWidth = value
+				Config.SidebarWidth =
+					value
 			end
 
 			local sidebarWidth =
@@ -4328,7 +5212,8 @@ Pages.Design = function()
 		Config.Notifications,
 
 		function(value)
-			Config.Notifications = value
+			Config.Notifications =
+				value
 		end
 	)
 
@@ -4404,7 +5289,9 @@ Pages.Design = function()
 					)
 			end
 
-			Router:Open("Design")
+			Router:Open(
+				"Design"
+			)
 		end,
 
 		GetTheme().Danger
@@ -4431,7 +5318,8 @@ Pages.Interface = function()
 		Config.Notifications,
 
 		function(value)
-			Config.Notifications = value
+			Config.Notifications =
+				value
 		end
 	)
 
@@ -4439,7 +5327,9 @@ Pages.Interface = function()
 		T("design"),
 		"",
 		function()
-			Router:Open("Design")
+			Router:Open(
+				"Design"
+			)
 		end
 	)
 
@@ -4447,7 +5337,9 @@ Pages.Interface = function()
 		T("language"),
 		"",
 		function()
-			Router:Open("Language")
+			Router:Open(
+				"Language"
+			)
 		end
 	)
 end
@@ -4462,7 +5354,9 @@ Pages.Settings = function()
 		T("interface"),
 		"",
 		function()
-			Router:Open("Interface")
+			Router:Open(
+				"Interface"
+			)
 		end
 	)
 
@@ -4470,7 +5364,9 @@ Pages.Settings = function()
 		T("design"),
 		"",
 		function()
-			Router:Open("Design")
+			Router:Open(
+				"Design"
+			)
 		end
 	)
 
@@ -4478,7 +5374,9 @@ Pages.Settings = function()
 		T("language"),
 		"",
 		function()
-			Router:Open("Language")
+			Router:Open(
+				"Language"
+			)
 		end
 	)
 
@@ -4502,13 +5400,15 @@ Pages.Settings = function()
 
 			ApplyTheme()
 
-			Router:Open("Settings")
+			Router:Open(
+				"Settings"
+			)
 		end
 	)
 end
 
 --==============================================================
--- ADMIN / DEV
+-- ADMIN
 --==============================================================
 
 Pages.Admin = function()
@@ -4527,7 +5427,7 @@ Pages.Admin = function()
 
 	Card(
 		"MONEY TEST",
-		"Local test",
+		"Test",
 
 		function()
 			local possible = {
@@ -4537,7 +5437,7 @@ Pages.Admin = function()
 				Gold = true,
 			}
 
-			local found = nil
+			local found
 
 			for _, object in ipairs(
 				LocalPlayer:GetDescendants()
@@ -4571,7 +5471,7 @@ Pages.Admin = function()
 
 	Card(
 		"MANPOWER TEST",
-		"Local test",
+		"Test",
 
 		function()
 			local possible = {
@@ -4580,7 +5480,7 @@ Pages.Admin = function()
 				Population = true,
 			}
 
-			local found = nil
+			local found
 
 			for _, object in ipairs(
 				LocalPlayer:GetDescendants()
@@ -4617,8 +5517,9 @@ end
 -- APPLY THEME
 --==============================================================
 
-function ApplyTheme()
-	local theme = GetTheme()
+ApplyTheme = function()
+	local theme =
+		GetTheme()
 
 	if UI.Main then
 		UI.Main.BackgroundColor3 =
@@ -4713,50 +5614,15 @@ end
 --==============================================================
 
 local Navigation = {
-	{
-		"home",
-		"Home",
-	},
-
-	{
-		"regions",
-		"Regions",
-	},
-
-	{
-		"countries",
-		"Countries",
-	},
-
-	{
-		"players",
-		"Players",
-	},
-
-	{
-		"visual",
-		"Visual",
-	},
-
-	{
-		"movement",
-		"Movement",
-	},
-
-	{
-		"music",
-		"Music",
-	},
-
-	{
-		"war",
-		"War",
-	},
-
-	{
-		"settings",
-		"Settings",
-	},
+	{"home", "Home"},
+	{"regions", "Regions"},
+	{"countries", "Countries"},
+	{"players", "Players"},
+	{"visual", "Visual"},
+	{"movement", "Movement"},
+	{"music", "Music"},
+	{"war", "War"},
+	{"settings", "Settings"},
 }
 
 local function RebuildSidebar()
@@ -4776,9 +5642,14 @@ local function RebuildSidebar()
 		end
 	end
 
-	for index, entry in ipairs(Navigation) do
-		local key = entry[1]
-		local pageName = entry[2]
+	for index, entry in ipairs(
+		Navigation
+	) do
+		local key =
+			entry[1]
+
+		local pageName =
+			entry[2]
 
 		local button =
 			New(
@@ -4809,7 +5680,8 @@ local function RebuildSidebar()
 
 				BorderSizePixel = 0,
 
-				Text = T(key),
+				Text =
+					T(key),
 
 				TextColor3 =
 					GetTheme().Text,
@@ -4920,19 +5792,14 @@ local function RebuildSidebar()
 		end
 	end
 
-	--==========================================================
-	-- ADMIN BUTTON
-	-- No Studio filter
-	--==========================================================
-
-	local button =
+	local adminButton =
 		New(
 			"TextButton",
 			UI.SidebarList
 		)
 
 	Apply(
-		button,
+		adminButton,
 		{
 			LayoutOrder =
 				#Navigation + 1,
@@ -4979,16 +5846,16 @@ local function RebuildSidebar()
 	)
 
 	AddCorner(
-		button,
+		adminButton,
 		8
 	)
 
-	local padding =
+	local adminPadding =
 		Instance.new(
 			"UIPadding"
 		)
 
-	padding.PaddingLeft =
+	adminPadding.PaddingLeft =
 		UDim.new(
 			0,
 			MobileDevice
@@ -4996,13 +5863,15 @@ local function RebuildSidebar()
 			or 12
 		)
 
-	padding.Parent =
-		button
+	adminPadding.Parent =
+		adminButton
 
 	TrackSidebar(
-		button.Activated:Connect(
+		adminButton.Activated:Connect(
 			function()
-				Router:Open("Admin")
+				Router:Open(
+					"Admin"
+				)
 			end
 		)
 	)
@@ -5033,15 +5902,11 @@ function Router:Open(pageName)
 		return false
 	end
 
-	State.Page = pageName
-	self.Name = pageName
+	State.Page =
+		pageName
 
 	local success, err =
-		pcall(
-			function()
-				page()
-			end
-		)
+		pcall(page)
 
 	if not success then
 		warn(
@@ -5054,16 +5919,6 @@ function Router:Open(pageName)
 			State.PageConnections
 		)
 
-		if UI.PageContainer then
-			for _, child in ipairs(
-				UI.PageContainer:GetChildren()
-			) do
-				if child:IsA("GuiObject") then
-					child:Destroy()
-				end
-			end
-		end
-
 		if UI.PageTitle then
 			UI.PageTitle.Text =
 				T("error")
@@ -5072,21 +5927,6 @@ function Router:Open(pageName)
 		if UI.PageDescription then
 			UI.PageDescription.Text =
 				tostring(err)
-		end
-
-		if UI.PageContainer then
-			Section(
-				T("error"),
-				tostring(err)
-			)
-
-			Card(
-				T("home"),
-				"",
-				function()
-					Router:Open("Home")
-				end
-			)
 		end
 	end
 
@@ -5117,7 +5957,8 @@ UI.ScreenGui =
 Apply(
 	UI.ScreenGui,
 	{
-		Name = "TEAM_PRIME_CLIENT",
+		Name =
+			"TEAM_PRIME_CLIENT",
 
 		ResetOnSpawn = false,
 
@@ -5250,7 +6091,8 @@ UI.TopTitle =
 		Enum.TextXAlignment.Left
 	)
 
-UI.TopTitle.ZIndex = 51
+UI.TopTitle.ZIndex =
+	51
 
 UI.TopSubtitle =
 	AddLabel(
@@ -5280,7 +6122,8 @@ UI.TopSubtitle =
 		Enum.TextXAlignment.Left
 	)
 
-UI.TopSubtitle.ZIndex = 51
+UI.TopSubtitle.ZIndex =
+	51
 
 --==============================================================
 -- WINDOW BUTTONS
@@ -5519,7 +6362,10 @@ local sidebarLayout =
 	)
 
 sidebarLayout.Padding =
-	UDim.new(0, 6)
+	UDim.new(
+		0,
+		6
+	)
 
 sidebarLayout.SortOrder =
 	Enum.SortOrder.LayoutOrder
@@ -5674,7 +6520,10 @@ local pageLayout =
 	)
 
 pageLayout.Padding =
-	UDim.new(0, 7)
+	UDim.new(
+		0,
+		7
+	)
 
 pageLayout.SortOrder =
 	Enum.SortOrder.LayoutOrder
@@ -5686,7 +6535,9 @@ UI.Status =
 	AddLabel(
 		UI.Main,
 
-		"● " .. T("online"),
+		"● "
+		..
+		T("online"),
 
 		UDim2.new(
 			0,
@@ -5717,8 +6568,13 @@ UI.Status.ZIndex = 30
 -- DRAG
 --==============================================================
 
-local function IsInside(gui, point)
-	if not gui or not gui.Parent then
+local function IsInside(
+	gui,
+	point
+)
+	if not gui
+		or not gui.Parent
+	then
 		return false
 	end
 
@@ -5730,10 +6586,13 @@ local function IsInside(gui, point)
 
 	return
 		point.X >= position.X
-		and point.X <=
+		and
+		point.X <=
 			position.X + size.X
-		and point.Y >= position.Y
-		and point.Y <=
+		and
+		point.Y >= position.Y
+		and
+		point.Y <=
 			position.Y + size.Y
 end
 
@@ -5743,7 +6602,8 @@ local function IsControl(point)
 			UI.Close,
 			point
 		)
-		or IsInside(
+		or
+		IsInside(
 			UI.Minimize,
 			point
 		)
@@ -5755,10 +6615,6 @@ Track(
 			if State.Destroyed
 				or not State.Started
 			then
-				return
-			end
-
-			if State.Minimized then
 				return
 			end
 
@@ -5780,8 +6636,11 @@ Track(
 			end
 
 			State.Dragging = true
-			State.DragStart = input.Position
-			State.DragOrigin = UI.Main.Position
+			State.DragStart =
+				input.Position
+
+			State.DragOrigin =
+				UI.Main.Position
 		end
 	)
 )
@@ -5805,19 +6664,22 @@ Track(
 
 			local delta =
 				input.Position
-				- State.DragStart
+				-
+				State.DragStart
 
 			UI.Main.Position =
 				UDim2.new(
 					State.DragOrigin.X.Scale,
 
 					State.DragOrigin.X.Offset
-						+ delta.X,
+						+
+						delta.X,
 
 					State.DragOrigin.Y.Scale,
 
 					State.DragOrigin.Y.Offset
-						+ delta.Y
+						+
+						delta.Y
 				)
 		end
 	)
@@ -5838,7 +6700,7 @@ Track(
 )
 
 --==============================================================
--- WINDOW CONTROLS
+-- MINIMIZE
 --==============================================================
 
 Track(
@@ -5858,8 +6720,14 @@ Track(
 
 				UI.Main.Size =
 					MobileDevice
-					and UDim2.fromOffset(230, 50)
-					or UDim2.fromOffset(340, 58)
+					and UDim2.fromOffset(
+						230,
+						50
+					)
+					or UDim2.fromOffset(
+						340,
+						58
+					)
 
 				local tween =
 					Animate(
@@ -5868,8 +6736,7 @@ Track(
 							Size =
 								State.NormalSize
 						},
-						0.22,
-						Enum.EasingStyle.Quint
+						0.22
 					)
 
 				if tween then
@@ -5896,8 +6763,7 @@ Track(
 									58
 								)
 						},
-						0.22,
-						Enum.EasingStyle.Quint
+						0.22
 					)
 
 				if tween then
@@ -5914,6 +6780,10 @@ Track(
 	)
 )
 
+--==============================================================
+-- CLOSE
+--==============================================================
+
 Track(
 	UI.Close.Activated:Connect(
 		function()
@@ -5923,7 +6793,6 @@ Track(
 
 			State.Destroyed = true
 			State.Dragging = false
-			State.WindowTweening = true
 
 			StopFly()
 			ClearESP()
@@ -5936,36 +6805,32 @@ Track(
 				ColorEffect = nil
 			end
 
-			local main = UI.Main
+			local main =
+				UI.Main
 
-			if main and main.Parent then
-				local tween =
-					TweenService:Create(
-						main,
+			if main
+				and main.Parent
+			then
+				Animate(
+					main,
+					{
+						Size =
+							MobileDevice
+							and UDim2.fromOffset(
+								210,
+								40
+							)
+							or UDim2.fromOffset(
+								300,
+								45
+							),
 
-						TweenInfo.new(
-							0.20,
-							Enum.EasingStyle.Quint,
-							Enum.EasingDirection.In
-						),
-
-						{
-							Size =
-								MobileDevice
-								and UDim2.fromOffset(
-									210,
-									40
-								)
-								or UDim2.fromOffset(
-									300,
-									45
-								),
-
-							BackgroundTransparency = 1,
-						}
-					)
-
-				tween:Play()
+						BackgroundTransparency =
+							1,
+					},
+					0.20,
+					Enum.EasingStyle.Quint
+				)
 
 				task.wait(0.22)
 			end
@@ -5992,8 +6857,64 @@ Track(
 )
 
 --==============================================================
--- HOTKEY
--- NO STUDIO FILTER
+-- SHOW WINDOW
+--==============================================================
+
+ShowWindow = function()
+	if State.Destroyed then
+		return
+	end
+
+	State.Minimized = false
+
+	UI.Body.Visible = true
+	UI.Main.Visible = true
+
+	local startWidth =
+		MobileDevice
+		and math.max(
+			220,
+			Config.MobileWidth - 45
+		)
+		or math.max(
+			300,
+			Config.Width - 80
+		)
+
+	local startHeight =
+		MobileDevice
+		and math.max(
+			200,
+			Config.MobileHeight - 45
+		)
+		or math.max(
+			250,
+			Config.Height - 60
+		)
+
+	UI.Main.Size =
+		UDim2.fromOffset(
+			startWidth,
+			startHeight
+		)
+
+	UI.Main.BackgroundTransparency = 1
+
+	Animate(
+		UI.Main,
+		{
+			Size =
+				State.NormalSize,
+
+			BackgroundTransparency = 0,
+		},
+		0.25,
+		Enum.EasingStyle.Quint
+	)
+end
+
+--==============================================================
+-- HOTKEYS
 --==============================================================
 
 Track(
@@ -6024,27 +6945,7 @@ Track(
 					)
 				else
 					if UI.Main.Visible then
-						local fade =
-							Animate(
-								UI.Main,
-								{
-									BackgroundTransparency =
-										0.35
-								},
-								0.08
-							)
-
-						if fade then
-							fade.Completed:Wait()
-						end
-
-						if not State.Destroyed then
-							UI.Main.BackgroundTransparency =
-								0
-
-							UI.Main.Visible =
-								false
-						end
+						UI.Main.Visible = false
 					else
 						ShowWindow()
 					end
@@ -6052,8 +6953,8 @@ Track(
 			end
 
 			--======================================================
-			-- FLY HOTKEY
-			-- IsStudio CHECK REMOVED
+			-- FLY
+			-- NO STUDIO CHECK
 			--======================================================
 
 			if input.KeyCode ==
@@ -6080,8 +6981,12 @@ Track(
 				ESPObjects[player]
 
 			if objects then
-				for _, object in ipairs(objects) do
-					if object and object.Parent then
+				for _, object in ipairs(
+					objects
+				) do
+					if object
+						and object.Parent
+					then
 						object:Destroy()
 					end
 				end
@@ -6131,7 +7036,7 @@ Track(
 )
 
 --==============================================================
--- RESPONSIVE UPDATE
+-- RESPONSIVE
 --==============================================================
 
 local function ApplyResponsiveLayout()
@@ -6265,9 +7170,11 @@ local function ApplyResponsiveLayout()
 		UI.Main.Size
 end
 
-if Camera then
+local camera = workspace.CurrentCamera
+
+if camera then
 	Track(
-		Camera:GetPropertyChangedSignal(
+		camera:GetPropertyChangedSignal(
 			"ViewportSize"
 		):Connect(
 			function()
@@ -6276,63 +7183,6 @@ if Camera then
 				end
 			end
 		)
-	)
-end
-
---==============================================================
--- SHOW WINDOW
---==============================================================
-
-function ShowWindow()
-	if State.Destroyed then
-		return
-	end
-
-	State.Minimized = false
-
-	UI.Body.Visible = true
-	UI.Main.Visible = true
-
-	local startWidth =
-		MobileDevice
-		and math.max(
-			220,
-			Config.MobileWidth - 45
-		)
-		or math.max(
-			300,
-			Config.Width - 80
-		)
-
-	local startHeight =
-		MobileDevice
-		and math.max(
-			200,
-			Config.MobileHeight - 45
-		)
-		or math.max(
-			250,
-			Config.Height - 60
-		)
-
-	UI.Main.Size =
-		UDim2.fromOffset(
-			startWidth,
-			startHeight
-		)
-
-	UI.Main.BackgroundTransparency = 1
-
-	Animate(
-		UI.Main,
-		{
-			Size =
-				State.NormalSize,
-
-			BackgroundTransparency = 0,
-		},
-		0.25,
-		Enum.EasingStyle.Quint
 	)
 end
 
@@ -6500,131 +7350,104 @@ local function LanguageSplash()
 		Enum.TextXAlignment.Center
 	)
 
-	local ru =
-		New(
-			"TextButton",
-			card
+	local function MakeLanguageButton(
+		text,
+		position
+	)
+		local button =
+			New(
+				"TextButton",
+				card
+			)
+
+		Apply(
+			button,
+			{
+				Position = position,
+
+				Size =
+					MobileDevice
+					and UDim2.fromOffset(
+						280,
+						55
+					)
+					or UDim2.fromOffset(
+						220,
+						65
+					),
+
+				BackgroundColor3 =
+					Themes.Prime.Card,
+
+				BorderSizePixel = 0,
+
+				Text = text,
+
+				TextColor3 =
+					Themes.Prime.Text,
+
+				Font =
+					Enum.Font.GothamBold,
+
+				TextSize =
+					MobileDevice
+					and 11
+					or 13,
+
+				AutoButtonColor = false,
+
+				Active = true,
+
+				Selectable = false,
+
+				ZIndex = 1002,
+			}
 		)
 
-	Apply(
-		ru,
-		{
-			Position =
-				MobileDevice
-				and UDim2.fromOffset(
-					25,
-					160
-				)
-				or UDim2.fromOffset(
-					45,
-					175
-				),
+		AddCorner(
+			button,
+			10
+		)
 
-			Size =
-				MobileDevice
-				and UDim2.fromOffset(
-					280,
-					55
-				)
-				or UDim2.fromOffset(
-					220,
-					65
-				),
+		return button
+	end
 
-			BackgroundColor3 =
-				Themes.Prime.Card,
+	local ru =
+		MakeLanguageButton(
+			"РУССКИЙ",
 
-			BorderSizePixel = 0,
-
-			Text = "РУССКИЙ",
-
-			TextColor3 =
-				Themes.Prime.Text,
-
-			Font =
-				Enum.Font.GothamBold,
-
-			TextSize =
-				MobileDevice
-				and 11
-				or 13,
-
-			AutoButtonColor = false,
-
-			Active = true,
-
-			Selectable = false,
-
-			ZIndex = 1002,
-		}
-	)
-
-	AddCorner(ru, 10)
+			MobileDevice
+			and UDim2.fromOffset(
+				25,
+				160
+			)
+			or UDim2.fromOffset(
+				45,
+				175
+			)
+		)
 
 	local en =
-		New(
-			"TextButton",
-			card
+		MakeLanguageButton(
+			"ENGLISH",
+
+			MobileDevice
+			and UDim2.fromOffset(
+				25,
+				225
+			)
+			or UDim2.fromOffset(
+				295,
+				175
+			)
 		)
-
-	Apply(
-		en,
-		{
-			Position =
-				MobileDevice
-				and UDim2.fromOffset(
-					25,
-					225
-				)
-				or UDim2.fromOffset(
-					295,
-					175
-				),
-
-			Size =
-				MobileDevice
-				and UDim2.fromOffset(
-					280,
-					55
-				)
-				or UDim2.fromOffset(
-					220,
-					65
-				),
-
-			BackgroundColor3 =
-				Themes.Prime.Card,
-
-			BorderSizePixel = 0,
-
-			Text = "ENGLISH",
-
-			TextColor3 =
-				Themes.Prime.Text,
-
-			Font =
-				Enum.Font.GothamBold,
-
-			TextSize =
-				MobileDevice
-				and 11
-				or 13,
-
-			AutoButtonColor = false,
-
-			Active = true,
-
-			Selectable = false,
-
-			ZIndex = 1002,
-		}
-	)
-
-	AddCorner(en, 10)
 
 	local selected = false
 
-	local function Choose(language, button)
+	local function Choose(
+		language,
+		button
+	)
 		if selected
 			or State.Destroyed
 		then
@@ -6633,71 +7456,42 @@ local function LanguageSplash()
 
 		selected = true
 
-		Config.Language = language
+		Config.Language =
+			language
 
 		button.BackgroundColor3 =
 			Themes.Prime.Accent
 
-		if language == "ru" then
-			button.Text =
-				"ЗАПУСК..."
-		else
-			button.Text =
-				"STARTING..."
-		end
-
-		Animate(
-			button,
-			{
-				Size =
-					MobileDevice
-					and UDim2.fromOffset(
-						290,
-						60
-					)
-					or UDim2.fromOffset(
-						230,
-						70
-					)
-			},
-			0.08,
-			Enum.EasingStyle.Quad
-		)
+		button.Text =
+			language == "ru"
+			and "ЗАПУСК..."
+			or "STARTING..."
 
 		task.wait(0.14)
 
 		Animate(
 			card,
 			{
-				Size =
-					MobileDevice
-					and UDim2.fromOffset(
-						300,
-						270
-					)
-					or UDim2.fromOffset(
-						500,
-						300
-					),
-
-				BackgroundTransparency = 1
+				BackgroundTransparency =
+					1
 			},
-			0.18,
-			Enum.EasingStyle.Quint
+			0.18
 		)
 
 		Animate(
 			splash,
 			{
-				BackgroundTransparency = 1
+				BackgroundTransparency =
+					1
 			},
-			0.18,
-			Enum.EasingStyle.Quint
+			0.18
 		)
 
 		task.wait(0.20)
 
-		if splash and splash.Parent then
+		if splash
+			and splash.Parent
+		then
 			splash:Destroy()
 		end
 
@@ -6712,14 +7506,17 @@ local function LanguageSplash()
 			T("subtitle")
 
 		UI.Status.Text =
-			"● " .. T("ready")
+			"● "
+			..
+			T("ready")
 
 		ApplyTheme()
 		ApplyResponsiveLayout()
-
 		RebuildSidebar()
 
-		Router:Open("Home")
+		Router:Open(
+			"Home"
+		)
 
 		ShowWindow()
 	end
@@ -6727,7 +7524,10 @@ local function LanguageSplash()
 	Track(
 		ru.Activated:Connect(
 			function()
-				Choose("ru", ru)
+				Choose(
+					"ru",
+					ru
+				)
 			end
 		)
 	)
@@ -6735,7 +7535,10 @@ local function LanguageSplash()
 	Track(
 		en.Activated:Connect(
 			function()
-				Choose("en", en)
+				Choose(
+					"en",
+					en
+				)
 			end
 		)
 	)
@@ -6754,8 +7557,7 @@ local function LanguageSplash()
 							BackgroundColor3 =
 								Themes.Prime.Accent
 						},
-						0.08,
-						Enum.EasingStyle.Quad
+						0.08
 					)
 				end
 			)
@@ -6774,8 +7576,7 @@ local function LanguageSplash()
 							BackgroundColor3 =
 								Themes.Prime.Card
 						},
-						0.08,
-						Enum.EasingStyle.Quad
+						0.08
 					)
 				end
 			)
@@ -6794,8 +7595,7 @@ local function LanguageSplash()
 							BackgroundColor3 =
 								Themes.Prime.Accent
 						},
-						0.08,
-						Enum.EasingStyle.Quad
+						0.08
 					)
 				end
 			)
@@ -6814,8 +7614,7 @@ local function LanguageSplash()
 							BackgroundColor3 =
 								Themes.Prime.Card
 						},
-						0.08,
-						Enum.EasingStyle.Quad
+						0.08
 					)
 				end
 			)
@@ -6828,10 +7627,12 @@ end
 --==============================================================
 
 print(
-	"[TEAM PRIME HUB] V26 initialized:",
+	"[TEAM PRIME HUB] V26 FINAL initialized:",
 	LocalPlayer.Name,
 	"| Device:",
-	MobileDevice and "PHONE" or "PC"
+	MobileDevice
+		and "PHONE"
+		or "PC"
 )
 
 ApplyResponsiveLayout()
